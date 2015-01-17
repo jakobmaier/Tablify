@@ -1,4 +1,7 @@
-﻿class Greeter {
+﻿/// <reference path="lib/jQuery/jquery.d.ts"/>
+
+
+class Greeter {
     element: HTMLElement;
     span: HTMLElement;
     timerToken: number;
