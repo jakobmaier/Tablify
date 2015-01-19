@@ -26,10 +26,10 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="helper.ts" />
-    <TypeScriptCompile Include="jsCell.ts" />
-    <TypeScriptCompile Include="jsColumn.ts" />
+    <TypeScriptCompile Include="Cell.ts" />
+    <TypeScriptCompile Include="Column.ts" />
     <TypeScriptCompile Include="jsGrid.ts" />
-    <TypeScriptCompile Include="jsRow.ts" />
+    <TypeScriptCompile Include="Row.ts" />
   </ItemGroup>
   <ItemGroup>
     <None Include="web.Debug.config">
