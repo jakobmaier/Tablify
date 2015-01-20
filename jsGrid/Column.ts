@@ -2,38 +2,23 @@
 
 
 module JsGrid {
-    export type ColumnDefinition = {
+    export type ColumnDefinitionDetails = {
         columnId: string;       //Internal representation
         //sortable?: boolean;
         //...
 
 
         //The following information is needed to create cells when a new column is inserted (to define the content for each new cell):
-        content?: { [key: string]: Cell; };   //key == rowId;  { "rowId": Cell}; If a specific row is not defined, the defaultContent is used
+        content?: { [key: string]: CellDefinition; };   //key == rowId;   { "rowId": CellDefinition};   If a specific row is not defined, the defaultContent is used
         
-        defaultTitleContent?: Cell;
-        defaultBodyContent?: Cell;  
-        //defaultFooterContent?: Cell;   
-    }
+        defaultTitleContent?: CellDefinition;
+        defaultBodyContent?: CellDefinition;  
+        //defaultFooterContent?: CellDefinition;   
+    };
+    export type ColumnDefinition = string | Column | ColumnDefinitionDetails;
+    
     
 
-    /*
-     * Returns the cell, which should be generated for newly generated columns
-     * @column      ColumnDefinition        The columnDefinition which contains all information on how to generate the cell
-     * @rowId       string                  The row, for which the cell should be returned
-     * @rowType     RowType                 The RowType of the row (If the cell is not explicitly defined in the column, the defaultContent depends on the rowType)
-     * @return      Cell                    Returns the cell that should be generated for the new column
-     */    
-    export function getColumnCell(column: ColumnDefinition, rowId: string, rowType: RowType) : Cell {        
-        if (rowId in column.content) {
-            return column.content[rowId];
-        }
-        switch (rowType) {
-            case RowType.title:     return column.defaultTitleContent;
-            case RowType.body:      return column.defaultBodyContent;        
-            default: assert(false, "Invalid RowType given.");
-        }
-    }
 
 
     export class Column{    
@@ -48,25 +33,32 @@ module JsGrid {
 
         /*
          * Generates a new Column
-         * @definition  string              ColumnId. The cells of the newly generated column will be empty.
-         *              ColumnDefinition    Contains detailed information on how to generate the new column.
+         * @columnDef   string                      ColumnId. The cells of the newly generated column will be empty.
+         *              Column                      The column will be deep-copied. DOM-connections will not be copied. Note that the new object will have the same columnId
+         *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
          */
-        constructor(definition: string|ColumnDefinition) {
+        constructor(columnDef: ColumnDefinition) {
             assert_argumentsNotNull(arguments);
 
-            var colDef: ColumnDefinition;
-            if(typeof definition === "string"){
-                colDef = { columnId: definition };
-            }else{
-               colDef = definition;
+            var columnDefDetails: ColumnDefinitionDetails;        
+            if (typeof columnDef === "string") {
+                columnDefDetails = { columnId: columnDef };
+            } else if (<any>columnDef instanceof Column) {  //Copy-Constructor
+                var other: Column = <Column>columnDef;
+                logger.info("Ceating new column-copy of \"" + other.columnId + "\".");
+                this.columnId = other.columnId;
+                this.defaultTitleContent = other.defaultTitleContent;
+                this.defaultBodyContent = other.defaultBodyContent;
+                return;
+            } else {                                        //ColumnDefinitionDetails
+                columnDefDetails = columnDef;
             }
+            logger.info("Ceating new column \"" + columnDefDetails.columnId + "\".");
 
-            logger.info("Ceating new column \"" + colDef.columnId + "\".");
-
-            this.columnId = colDef.columnId;
-            this.defaultTitleContent = colDef.defaultTitleContent || new Cell();
-            this.defaultBodyContent = colDef.defaultBodyContent || new Cell();
-            //this.defaultFooterContent = colDef.defaultFooterContent || new Cell();
+            this.columnId = columnDefDetails.columnId;
+                       
+            this.defaultTitleContent = new Cell(columnDefDetails.defaultTitleContent || this.columnId);
+            this.defaultBodyContent = new Cell(columnDefDetails.defaultBodyContent);
         }
 
 
@@ -83,7 +75,7 @@ module JsGrid {
             };   
         }
         
-        //Todo: don't provide the following function - either imporove the constructor, or make a factory method
+        //Todo: don't provide the following function - either improve the constructor, or make a factory method
         fromObject(rowId: string, representation: any): void {
             assert(false, "not implemented yet");
         }

@@ -10,6 +10,10 @@ module JsGrid {
         info(...args: any[]): void;
         warning(...args: any[]): void;
         error(...args: any[]): void;
+        logIf(check: boolean, ...args: any[]): void;
+        infoIf(check: boolean, ...args: any[]): void;
+        warningIf(check: boolean, ...args: any[]): void;
+        errorIf(check: boolean, ...args: any[]): void;
     }
 
     class ConsoleLogger implements ILogger {
@@ -25,12 +29,34 @@ module JsGrid {
         error(...args: any[]): void {
             console.error.apply(console, arguments);
         }
+
+        logIf(check: boolean, ...args: any[]): void {
+            if (check) {
+                this.log.apply(this, args);
+            }
+        }
+        infoIf(check: boolean, ...args: any[]): void {
+            if (check) {
+                this.info.apply(this, args);
+            }
+        }
+        warningIf(check: boolean, ...args: any[]): void {
+            if (check) {
+                this.warning.apply(this, args);
+            }
+        }
+        errorIf(check: boolean, ...args: any[]): void {
+            if (check) {
+                this.error.apply(this, args);
+            }
+        }
     }
 
     export var logger: ILogger = new ConsoleLogger();
 
+    
     /*
-     * If the check evaluates to false, an error message is logged. No exception is thrown
+     * If the check evaluates to false, an error message is logged. No exception is thrown.
      * @check   boolean     true: everything ok; false: error
      * @...     mixed       Any additional information that should be logged if check is false
      * @return  boolean     true: everything ok; false: an error has been logged
@@ -52,7 +78,7 @@ module JsGrid {
      * @return  boolean     true: everything ok; false: an error has been logged
      */
     export function assert(check: boolean, ...args: any[]): boolean {
-        if (!assert.apply(arguments)) {
+        if (!weakAssert.apply(this, arguments)) {
             throw new Error("Assertion failed");
         }
         return check;

@@ -13,6 +13,7 @@ type Row = string;
 
 module JsGrid {
    
+   
 
     
     export class Table {
@@ -22,8 +23,8 @@ module JsGrid {
         private tbody: JQuery;  //<tbody>
 
     
-        //Todo: set the gridId programatically to a unique value
-        private gridId: string = "grid1";               //Unique grid id
+        private static gridIdSequence: number = 0;      //Used to auto-generate unique ids
+        private gridId: string;                         //Unique grid id
 
         //Column properties:
         private columns: { [key: string]: Column; } = {};        // { "columnId": Column, ... }
@@ -36,10 +37,11 @@ module JsGrid {
  
         /*
          * Generates a new JsGrid Table
-         * @parameter   identifier      string      JQuery-Selector. Is resolved to a JQuery element (see below)
-         *                              JQuery      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the JsGrid is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+         * @identifier      string      JQuery-Selector. Is resolved to a JQuery element (see below)
+         *                  JQuery      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the JsGrid is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
          */
         constructor(identifier: string|JQuery) {
+            this.gridId = "jsg" + (++Table.gridIdSequence);
             if (typeof identifier === "string") {
                 this.table = $(identifier);                     //selector
             } else {
@@ -52,9 +54,9 @@ module JsGrid {
 
             if (this.table.prop("tagName") !== "TABLE") {       //Create a new table within this element
                 logger.log("Creating table element. Parent tag: ", this.table.prop("tagName"));
-                var newTable = document.createElement("table");
-                this.table.append(newTable);
-                this.table = $(newTable);
+                var table = $("<table><thead></thead><tbody></tbody></table>");
+                this.table.append(table);
+                this.table = table;
             }
             this.table.addClass("jsGrid");
 
@@ -74,50 +76,73 @@ module JsGrid {
 
         /*
          * Adds a new column to the table.
-         * @parameter column    string                  ColumnId. The cells of the newly generated column will be empty.
-         *                      ColumnDefinition        Contains detailed information on how to generate the new column.
+         * @column      string                  ColumnId. The cells of the newly generated column will be empty.
+         *              Column                  The column will be deep-copied. Note that the new object will have the same columnId
+         *              ColumnDefinitionDetails Contains detailed information on how to generate the new column.
          */
-        addColumn(column: string|ColumnDefinition): void {
+        addColumn(columnDef: ColumnDefinition): void {
             assert_argumentsNotNull(arguments);
+                      
 
-            var colDef = new Column(column);
-            var columnId: string = colDef.columnId;
+            var column = new Column(columnDef);
+            var columnId: string = column.columnId;
             if (columnId in this.columns) {
                 logger.error("There is already a column with the id \"" + columnId + "\".");
                 return;
             }
-            this.columns[columnId] = colDef;
+            this.columns[columnId] = column;
 
+            var content: { [key: string]: CellDefinition; } = {};
+            if (typeof columnDef !== "string" && !(columnDef instanceof Column)) {       //ColumnDefinitionDetails
+                content = (<ColumnDefinitionDetails>columnDef).content || {};
+            }
+            
             //Add a new cell to each row:
             for (var rowId in this.rows) {
                 var row: Row = this.rows[rowId];
-                var cell: Cell = getColumnCell(colDef, row.rowId, row.rowType);
-                row.addColumn(colDef, cell);
-                //TODO: the row (or this table) needs to generate the HTML
+                var cell: CellDefinition;
+                if (rowId in content) {     //The user passed a definition on how to create this cell
+                    cell = content[rowId];
+                } else {
+                    switch (row.rowType) {
+                        case RowType.title: cell = column.defaultTitleContent;  break;
+                        case RowType.body:  cell = column.defaultBodyContent;   break;
+                        default: assert(false, "Invalid RowType given.");
+                    }
+                }
+                row.addColumn(column, cell);
             }
         }
 
-        addRow(rowType: RowType, row: string|RowDefinition): void {
+        /*
+         * Adds a new row to the table
+         * @rowType     RowType                 The type of the row (title, body, footer)
+         * @rowDef      string                  RowId. The cells of the newly generated row will be created using the column's default values.
+         *              Row                     The row will be deep-copied. Note that the new object will have the same rowId.
+         *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
+         */
+        addRow(rowType: RowType, rowDef: RowDefinition): void {
             assert_argumentsNotNull(arguments);
 
-            var rowDef = new Row(rowType, row, this.columns);
-            var rowId: string = rowDef.rowId;
+            var row = new Row(rowType, rowDef, this.columns);
+            var rowId: string = row.rowId;
             
             if (rowId in this.rows) {
                 logger.error("There is already a row with the id \"" + rowId + "\".");
                 return;
             }
+            this.rows[rowId] = row;
             switch (rowType) {
-                case RowType.title:
-                    this.titleRows.push(rowDef);
+                case RowType.title: this.titleRows.push(row);
+                    this.thead.append(row.generateDom());       //Add the row to the table-head
                     break;
-                case RowType.body:
-                    this.bodyRows.push(rowDef);
+                case RowType.body: this.bodyRows.push(row);
+                    this.tbody.append(row.generateDom());       //Add the row to the table-body
                     break;
-                default:
-                    assert(false, "Invalid RowType given.");
+                default:    assert(false, "Invalid RowType given.");
             }
-            this.rows[rowId] = rowDef;
+            
+            
         }
 
 
@@ -150,12 +175,11 @@ module JsGrid {
           
 
 
-        //Todo: don't provide the following function - either imporove the constructor, or make a factory method
+        //Todo: don't provide the following function - either improve the constructor, or make a factory method
         fromObject(rowId: string, representation: any): void {
             assert(false, "not implemented yet");
         }
     }
-
 }
 
 
@@ -175,15 +199,43 @@ window.onload = () => {
     var grid = new JsGrid.Table("#content");
 
     grid.addColumn("Column 1");
+    grid.addColumn({
+        columnId: "Column 2",
+        defaultTitleContent: "2. Spalte"
+    });
+
     grid.addRow(JsGrid.RowType.title, "Title row");
+
     grid.addRow(JsGrid.RowType.body, {
         rowId: "First row",
         content: {
-            "Column 1": "First cell"
+            "Column 1": "First cell",
+            "Column 2": "Second cell"
         }
     });
-    grid.addRow(JsGrid.RowType.body, "Second row");
+    grid.addRow(JsGrid.RowType.body, {
+        rowId: "Second row",
+        content: {
+            "Column 1": "!!!"
+        }
+    });
+    grid.addColumn({
+        columnId: "Column 3",
+        defaultTitleContent: "InvisibleTitle",
+        defaultBodyContent: "<b>That's what I call a cell!</b>",
+        content: {
+            "First row": "3x1",
+            "Title row": "Title of Nr. 3"
+        }
+    });
+
+
+    //TODO:
+    //tbody/thead!
+
+
 
     console.log(grid.toObject());
+
 };
 
