@@ -25,7 +25,7 @@
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
-    <TypeScriptCompile Include="helper.ts" />
+    <TypeScriptCompile Include="Debugging.ts" />
     <TypeScriptCompile Include="Cell.ts" />
     <TypeScriptCompile Include="Column.ts" />
     <TypeScriptCompile Include="jsGrid.ts" />

@@ -1,5 +1,5 @@
 ﻿/// <reference path="lib/jQuery/jquery.d.ts"/>
-/// <reference path="helper.ts" />
+/// <reference path="Debugging.ts" />
 
 
 /*
@@ -12,10 +12,7 @@ Other libs:
 type Row = string;
 
 module JsGrid {
-   
-   
-
-    
+  
     export class Table {
         //References to commonly used HTML elements:
         private table: JQuery;  //<table>
@@ -76,14 +73,12 @@ module JsGrid {
 
         /*
          * Adds a new column to the table.
-         * @column      string                  ColumnId. The cells of the newly generated column will be empty.
-         *              Column                  The column will be deep-copied. Note that the new object will have the same columnId
-         *              ColumnDefinitionDetails Contains detailed information on how to generate the new column.
+         * @column      null / undefined            The columnId is generated automatically
+         *              string                      ColumnId. The cells of the newly generated column will be empty.
+         *              Column                      The column will be deep-copied. Note that the new object will have the same columnId
+         *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
          */
-        addColumn(columnDef: ColumnDefinition): void {
-            assert_argumentsNotNull(arguments);
-                      
-
+        addColumn(columnDef?: ColumnDefinition): void {
             var column = new Column(columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
@@ -93,7 +88,7 @@ module JsGrid {
             this.columns[columnId] = column;
 
             var content: { [key: string]: CellDefinition; } = {};
-            if (typeof columnDef !== "string" && !(columnDef instanceof Column)) {       //ColumnDefinitionDetails
+            if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails
                 content = (<ColumnDefinitionDetails>columnDef).content || {};
             }
             
@@ -105,25 +100,30 @@ module JsGrid {
                     cell = content[rowId];
                 } else {
                     switch (row.rowType) {
-                        case RowType.title: cell = column.defaultTitleContent;  break;
-                        case RowType.body:  cell = column.defaultBodyContent;   break;
+                        case RowType.title: cell = column.defaultTitleContent; break;
+                        case RowType.body: cell = column.defaultBodyContent; break;
                         default: assert(false, "Invalid RowType given.");
                     }
                 }
                 row.addColumn(column, cell);
             }
+            if (inputValidation) {  //Check if the columnDefinition has some invalid data
+                for (var rowId in content) {
+                    logger.warningIf(!(rowId in this.rows), "The column definition of column \"" + column.columnId + "\" contains data for row \"" + rowId + "\", although there is no such row.");
+                }
+            }
         }
+
 
         /*
          * Adds a new row to the table
          * @rowType     RowType                 The type of the row (title, body, footer)
-         * @rowDef      string                  RowId. The cells of the newly generated row will be created using the column's default values.
+         * @rowDef      null / undefined        The rowId is generated automatically.
+         *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
          *              Row                     The row will be deep-copied. Note that the new object will have the same rowId.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
          */
-        addRow(rowType: RowType, rowDef: RowDefinition): void {
-            assert_argumentsNotNull(arguments);
-
+        addRow(rowType: RowType, rowDef?: RowDefinition): void {
             var row = new Row(rowType, rowDef, this.columns);
             var rowId: string = row.rowId;
             
@@ -140,11 +140,8 @@ module JsGrid {
                     this.tbody.append(row.generateDom());       //Add the row to the table-body
                     break;
                 default:    assert(false, "Invalid RowType given.");
-            }
-            
-            
+            }         
         }
-
 
 
         /*
@@ -198,40 +195,44 @@ window.onload = () => {
     //new JsGrid.Table("#content>table");
     var grid = new JsGrid.Table("#content");
 
-    grid.addColumn("Column 1");
+    grid.addColumn(/*"Column 1"*/);
     grid.addColumn({
-        columnId: "Column 2",
+        //columnId: "Column 2",
         defaultTitleContent: "2. Spalte"
     });
 
     grid.addRow(JsGrid.RowType.title, "Title row");
 
     grid.addRow(JsGrid.RowType.body, {
-        rowId: "First row",
+        //rowId: "First row",
         content: {
-            "Column 1": "First cell",
-            "Column 2": "Second cell"
+            "jsc1": new JsGrid.Cell("First cell"),
+            "jsc2": "Second cell"
         }
     });
+
+
     grid.addRow(JsGrid.RowType.body, {
-        rowId: "Second row",
+        //rowId: "Second row",
         content: {
-            "Column 1": "!!!"
+            "jsc1": "!!!"
         }
-    });
+    });/*
     grid.addColumn({
         columnId: "Column 3",
         defaultTitleContent: "InvisibleTitle",
         defaultBodyContent: "<b>That's what I call a cell!</b>",
         content: {
-            "First row": "3x1",
+            "jsr1": "3x1",
             "Title row": "Title of Nr. 3"
         }
-    });
+    });*/
+    grid.addRow(JsGrid.RowType.body);
+    grid.addRow(JsGrid.RowType.body);
+    grid.addRow(JsGrid.RowType.body);
+    grid.addRow(JsGrid.RowType.body);
+    grid.addRow(JsGrid.RowType.body);
 
-
-    //TODO:
-    //tbody/thead!
 
 
 

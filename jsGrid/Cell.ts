@@ -10,7 +10,7 @@ module JsGrid {
 
     export class Cell{
         private element: JQuery = null;     //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
-        private content: string;
+        content: string;
 
         /*
          * Generates a new Cell
@@ -39,13 +39,13 @@ module JsGrid {
          */
         generateDom(tagType: string, columnId: string): JQuery {
             if (this.element !== null) {
-                logger.warning("Cell: generateDom has been called, altough the element has already been generated before. This might be an error.");
+                logger.warning("Cell: generateDom has been called, although the element has already been generated before. This might be an error.");
                 return this.element;
             }
             assert_argumentsNotNull(arguments);
             assert(tagType === "th" || tagType === "td", "Cells must have a \"th\" or \"td\" tagType.");
             
-            var html = "<" + tagType + " data-columnId:'"+columnId+"'>"
+            var html = "<" + tagType + " data-columnId='"+columnId+"'>"
                 + this.content
                 + "</" + tagType + ">";
             this.element = $(html);

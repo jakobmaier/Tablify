@@ -3,7 +3,7 @@
 
 module JsGrid {
     export type ColumnDefinitionDetails = {
-        columnId: string;       //Internal representation
+        columnId?: string;      //Internal representation
         //sortable?: boolean;
         //...
 
@@ -22,7 +22,9 @@ module JsGrid {
 
 
     export class Column{    
-        columnId: string;       //Internal representation
+
+        private static columnIdSequence: number = 0;    //Used to auto-generate unique ids, if the user didn't pass an Id
+        columnId: string;                               //Internal representation
         //sortable?: boolean;
         //...
 
@@ -33,13 +35,12 @@ module JsGrid {
 
         /*
          * Generates a new Column
-         * @columnDef   string                      ColumnId. The cells of the newly generated column will be empty.
+         * @columnDef   null/undefined              The columnId is generated automatically
+         *              string                      ColumnId. The cells of the newly generated column will be empty.
          *              Column                      The column will be deep-copied. DOM-connections will not be copied. Note that the new object will have the same columnId
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
          */
-        constructor(columnDef: ColumnDefinition) {
-            assert_argumentsNotNull(arguments);
-
+        constructor(columnDef?: ColumnDefinition) {
             var columnDefDetails: ColumnDefinitionDetails;        
             if (typeof columnDef === "string") {
                 columnDefDetails = { columnId: columnDef };
@@ -50,15 +51,21 @@ module JsGrid {
                 this.defaultTitleContent = other.defaultTitleContent;
                 this.defaultBodyContent = other.defaultBodyContent;
                 return;
-            } else {                                        //ColumnDefinitionDetails
-                columnDefDetails = columnDef;
+            } else {                                        //null / undefined / ColumnDefinitionDetails
+                columnDefDetails = columnDef || {};
             }
-            logger.info("Ceating new column \"" + columnDefDetails.columnId + "\".");
 
-            this.columnId = columnDefDetails.columnId;
+            this.columnId = columnDefDetails.columnId || ("jsc" + (++Column.columnIdSequence));
+
+            logger.info("Ceating new column \"" + this.columnId + "\".");
                        
             this.defaultTitleContent = new Cell(columnDefDetails.defaultTitleContent || this.columnId);
             this.defaultBodyContent = new Cell(columnDefDetails.defaultBodyContent);
+
+
+            if (inputValidation) {  //Check if the columnDefinition has some invalid data
+                //todo: regex-check of columnId here, so that it doesn't contain special characters that can ruin html
+            }
         }
 
 
