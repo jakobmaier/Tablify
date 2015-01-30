@@ -1,5 +1,6 @@
 ﻿/// <reference path="lib/jQuery/jquery.d.ts"/>
 /// <reference path="Debugging.ts" />
+/// <reference path="TypeDefinitions.ts" />
 
 
 /*
@@ -34,10 +35,11 @@ module JsGrid {
  
         /*
          * Generates a new JsGrid Table
-         * @identifier      string      JQuery-Selector. Is resolved to a JQuery element (see below)
-         *                  JQuery      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the JsGrid is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+         * @identifier      string              JQuery-Selector. Is resolved to a JQuery element (see below)
+         *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the JsGrid is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+         * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
          */
-        constructor(identifier: string|JQuery) {
+        constructor(identifier: string|JQuery, description?: TableDescription) {
             this.gridId = "jsg" + (++Table.gridIdSequence);
             if (typeof identifier === "string") {
                 this.table = $(identifier);                     //selector
@@ -59,8 +61,20 @@ module JsGrid {
 
             this.thead = this.table.find("thead");
             this.tbody = this.table.find("tbody");
-        }
 
+            if (!description) {     //No content to generate
+                return;
+            }
+        //Generate the table content:
+            for (var i = 0; i < description.columns.length; ++i) {
+                this.addColumn( description.columns[i] );
+            }
+            var titleRowCount = description.titleRowCount || 0;
+            for (var i = 0; i < description.rows.length; ++i) {
+                this.addRow(titleRowCount > i ? RowType.title : RowType.body, description.rows[i]);
+            }
+        }
+        
 
         /*
          * Destroys the JsGrid Table. This object will get unusable.
@@ -77,8 +91,9 @@ module JsGrid {
          *              string                      ColumnId. The cells of the newly generated column will be empty.
          *              Column                      The column will be deep-copied. Note that the new object will have the same columnId
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
+         *              ColumnDescription           Used for deserialisation.
          */
-        addColumn(columnDef?: ColumnDefinition): void {
+        addColumn(columnDef?: ColumnDefinition|ColumnDescription): void {
             var column = new Column(columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
@@ -88,7 +103,7 @@ module JsGrid {
             this.columns[columnId] = column;
 
             var content: { [key: string]: CellDefinition; } = {};
-            if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails
+            if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails / ColumnDescription
                 content = (<ColumnDefinitionDetails>columnDef).content || {};
             }
             
@@ -122,8 +137,9 @@ module JsGrid {
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
          *              Row                     The row will be deep-copied. Note that the new object will have the same rowId.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
+         *              RowDescription          Used for deserialisation.
          */
-        addRow(rowType: RowType, rowDef?: RowDefinition): void {
+        addRow(rowType: RowType, rowDef?: RowDefinition|RowDescription): void {
             var row = new Row(rowType, rowDef, this.columns);
             var rowId: string = row.rowId;
             
@@ -147,35 +163,27 @@ module JsGrid {
         /*
          * Converts the Table into an object. Used for serialisation.
          * Performs a deepCopy.
-         * @return  mixed      Row-Representation
+         * @includeContent      boolean             true (default): The data is included in the object as well. Otherwise, the returned object only contains meta data. 
+         * @return              TableDescription    DeepCopy of this table
          */
-        toObject(): any {
-            var representation = {
-                gridId: this.gridId,
+        toObject(includeContent?: boolean): TableDescription {
+            var description: TableDescription = {
                 columns: [],
-                rows: {
-                    titleRows: [],
-                    bodyRows: []
-                }
+                rows: [],
+                titleRowCount: this.titleRows.length
             };
             for (var columnId in this.columns) {
-                representation.columns.push(this.columns[columnId].toObject());
+                description.columns.push(this.columns[columnId].toObject());
             }
             for (var i = 0; i < this.titleRows.length; ++i) {
-                representation.rows.titleRows.push(this.titleRows[i].toObject());
+                description.rows.push(this.titleRows[i].toObject(includeContent));
             }
             for (var i = 0; i < this.bodyRows.length; ++i) {
-                representation.rows.bodyRows.push(this.bodyRows[i].toObject());
+                description.rows.push(this.bodyRows[i].toObject(includeContent));
             }
-            return representation;
+            return description;
         }
           
-
-
-        //Todo: don't provide the following function - either improve the constructor, or make a factory method
-        fromObject(rowId: string, representation: any): void {
-            assert(false, "not implemented yet");
-        }
     }
 }
 
@@ -198,7 +206,8 @@ window.onload = () => {
     grid.addColumn(/*"Column 1"*/);
     grid.addColumn({
         //columnId: "Column 2",
-        defaultTitleContent: "2. Spalte"
+        defaultTitleContent: "2. Spalte",
+        defaultBodyContent: "---"
     });
 
     grid.addRow(JsGrid.RowType.title, "Title row");
@@ -208,6 +217,13 @@ window.onload = () => {
         content: {
             "jsc1": new JsGrid.Cell("First cell"),
             "jsc2": "Second cell"
+        }
+    });
+
+    grid.addRow(JsGrid.RowType.title, {
+        content: {
+            "jsc1": new JsGrid.Cell("column 1"),
+            "jsc2": "column 2"
         }
     });
 
@@ -236,7 +252,11 @@ window.onload = () => {
 
 
 
-    console.log(grid.toObject());
+    //console.log(grid.toObject());
+    console.log(JSON.stringify(grid.toObject(true)));
 
+
+    new JsGrid.Table("#content", grid.toObject(true));
+    new JsGrid.Table("#content", grid.toObject(false));
 };
 

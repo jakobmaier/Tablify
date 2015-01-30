@@ -2,24 +2,6 @@
 
 
 module JsGrid {
-    export type ColumnDefinitionDetails = {
-        columnId?: string;      //Internal representation
-        //sortable?: boolean;
-        //...
-
-
-        //The following information is needed to create cells when a new column is inserted (to define the content for each new cell):
-        content?: { [key: string]: CellDefinition; };   //key == rowId;   { "rowId": CellDefinition};   If a specific row is not defined, the defaultContent is used
-        
-        defaultTitleContent?: CellDefinition;
-        defaultBodyContent?: CellDefinition;  
-        //defaultFooterContent?: CellDefinition;   
-    };
-    export type ColumnDefinition = string | Column | ColumnDefinitionDetails;
-    
-    
-
-
 
     export class Column{    
 
@@ -39,8 +21,9 @@ module JsGrid {
          *              string                      ColumnId. The cells of the newly generated column will be empty.
          *              Column                      The column will be deep-copied. DOM-connections will not be copied. Note that the new object will have the same columnId
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
+         *              ColumnDescription           Used for deserialisation.
          */
-        constructor(columnDef?: ColumnDefinition) {
+        constructor(columnDef?: ColumnDefinition|ColumnDescription) {
             var columnDefDetails: ColumnDefinitionDetails;        
             if (typeof columnDef === "string") {
                 columnDefDetails = { columnId: columnDef };
@@ -51,7 +34,7 @@ module JsGrid {
                 this.defaultTitleContent = other.defaultTitleContent;
                 this.defaultBodyContent = other.defaultBodyContent;
                 return;
-            } else {                                        //null / undefined / ColumnDefinitionDetails
+            } else {                                        //null / undefined / ColumnDefinitionDetails / ColumnDescription
                 columnDefDetails = columnDef || {};
             }
 
@@ -72,19 +55,14 @@ module JsGrid {
         /*
          * Converts the Column into an object. Used for serialisation.
          * Performs a deepCopy.
-         * @return  mixed      Column-Representation
+         * @return  ColumnDescription      DeepCopy of this column
          */
-        toObject(): any {
+        toObject(): ColumnDescription {
             return {
                 columnId: this.columnId,
                 defaultTitleContent: this.defaultTitleContent.toObject(),
                 defaultBodyContent: this.defaultBodyContent.toObject()
             };   
-        }
-        
-        //Todo: don't provide the following function - either improve the constructor, or make a factory method
-        fromObject(rowId: string, representation: any): void {
-            assert(false, "not implemented yet");
         }
     }
 }

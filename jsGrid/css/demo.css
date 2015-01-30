@@ -24,28 +24,56 @@ input:-moz-placeholder { color:#a9a9a9; }
 textarea:-moz-placeholder { color:#a9a9a9; }
 
 
-body {
-    background-color: #2D2D30;
+
+
+
+
+
+body, textarea {
+    background-color: #272822;
     color: #C7C7C7;
 }
 
-h1 {
-    font-size: 2em;
-    font-weight: bold;
-    padding: 0.67em;
+#header{
+    background-color: #2D2D30;
     border-bottom: 2px solid #007ACC;
+    position: relative;     /*needed to position #tools*/
 }
 
-#content {
-    padding: 10px;
-    background-color: #272822;
+h1 {    
+    font-size: 2em;
+    font-weight: bold;    
+    padding: 0.67em;
+    display: inline-block;
+}
+
+#tools{
     position: absolute;
-    top: 67px;
-    left: 0;
-    right: 0;
+    top: 0;
     bottom: 0;
+    right: 0;
+}
+
+#tools input{
+    margin: 2px;
+    float: right;
+}
+
+textarea#tableDescription{
+    margin: 2px;
+    height: calc(100% - 4px);
+}
+
+
+
+
+
+
+#content {
+    padding: 10px;    
 }
 
 #content>table {
-    margin: auto;
+    display: inline-block;
+    margin: 20px;
 }

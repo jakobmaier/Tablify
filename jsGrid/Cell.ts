@@ -1,15 +1,11 @@
 ﻿ /// <reference path="JsGrid.ts" />
 
 module JsGrid {
-    export type CellDefinitionDetails = {
-        content: string;
-    };
-    export type CellDefinition = string | Cell | CellDefinitionDetails;
-    
-  
 
-    export class Cell{
+    export class Cell {
+
         private element: JQuery = null;     //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
+
         content: string;
 
         /*
@@ -17,16 +13,17 @@ module JsGrid {
          * @cellDef     string                  The (html-)content of the cell. The content is not html-escaped
          *              Cell                    The cell will be deep-copied.  DOM-connections will not be copied.
          *              CellDefinitionDetails   Contains detailed information on how to generate the cell
+         *              CellDescription         Used for deserialisation
          */
-        constructor(cellDef?: CellDefinition) {
-            if (!cellDef){                                  //null / undefined -> empty cell
+        constructor(cellDef?: CellDefinition|CellDescription) {
+            if (!cellDef) {                                  //null / undefined -> empty cell
                 this.content = "";
-            } else if (typeof cellDef === "string"){
+            } else if (typeof cellDef === "string") {
                 this.content = cellDef;
             } else if (<any>cellDef instanceof Cell) {      //Copy-Constructor
                 logger.info("Ceating new cell-copy.");
                 this.content = (<Cell>cellDef).content;
-            } else {                                        //CellDefinitionDetails
+            } else {                                        //CellDefinitionDetails / CellDescription
                 this.content = cellDef.content;
             }
         }
@@ -44,8 +41,8 @@ module JsGrid {
             }
             assert_argumentsNotNull(arguments);
             assert(tagType === "th" || tagType === "td", "Cells must have a \"th\" or \"td\" tagType.");
-            
-            var html = "<" + tagType + " data-columnId='"+columnId+"'>"
+
+            var html = "<" + tagType + " data-columnId='" + columnId + "'>"
                 + this.content
                 + "</" + tagType + ">";
             this.element = $(html);
@@ -56,15 +53,11 @@ module JsGrid {
         /*
          * Converts the Cell into an object. Used for serialisation.
          * Performs a deepCopy.
-         * @return  mixed      Cell-Representation
+         * @return  CellDescription         DeepCopy of this cell
          */
-        toObject(): any {            
+        toObject(): CellDescription {            
+            //return { content: this.content };
             return this.content;
         }
-        
-        //Todo: don't provide the following function - either improve the constructor, or make a factory method
-        fromObject(rowId: string, representation: any): void {
-            assert(false, "not implemented yet");
-        }
-    }
+    }        
 }

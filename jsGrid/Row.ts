@@ -1,17 +1,9 @@
 ﻿/// <reference path="JsGrid.ts" />
 
 module JsGrid {
-    export type RowDefinitionDetails = {
-        rowId?: string;
-        content?: { [key: string]: CellDefinition; };           //{ columnId: CellDefinition, ...}
-    };
-    export type RowDefinition = string | Row | RowDefinitionDetails;
-
-    
-    export enum RowType { title = 0, body = 1 };
-
 
     export class Row {
+
         private element: JQuery = null;             //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
         
         private static rowIdSequence: number = 0;   //Used to auto-generate unique ids, if the user didn't pass an Id
@@ -27,9 +19,10 @@ module JsGrid {
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
          *              Row                     The row will be deep-copied. DOM-connections will not be copied. Note that the new object will have the same rowId.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
+         *              RowDescription          Used for deserialisation.
          * @columns     Column[]                The currently existing columns in the table. The Row will get one cell per column, the content depends on the parameter "definition".
          */
-        constructor(rowType: RowType, rowDef: RowDefinition, columns: { [key: string]: Column; }) {
+        constructor(rowType: RowType, rowDef: RowDefinition|RowDescription, columns: { [key: string]: Column; }) {
             assert(typeof rowType === "number" && typeof columns === "object");
 
             var rowInfo: RowDefinitionDetails;
@@ -44,7 +37,7 @@ module JsGrid {
                     this.cells[columnId] = new Cell(other.cells[columnId]);
                 }
                 return;
-            } else {                                    //null / RowDefinitionDetails
+            } else {                                    //null / RowDefinitionDetails / RowDescription
                 rowInfo = rowDef || {};
             }
             
@@ -128,24 +121,25 @@ module JsGrid {
         /*
          * Converts the Row into an object. Used for serialisation.
          * Performs a deepCopy.
-         * @return  mixed      Row-Representation
+         * @includeContent      boolean             true (default): The data is included in the object as well. Otherwise, the returned object only contains meta data. 
+         * @return              RowDescription      DeepCopy of this row
          */
-        toObject(): any{
-            var representation = {
-                rowId: this.rowId,
-                rowType: this.rowType,
-                cells: {}
+        toObject(includeContent?: boolean): RowDescription{
+            var description : RowDescription = {
+                rowId:   this.rowId
             };
-            for (var columnId in this.cells) {
-                representation.cells[columnId] = this.cells[columnId].toObject();
+            console.log(includeContent);
+            if (includeContent === false) {      //Don't include any data
+                return description;
             }
-            return representation;
+            
+            description.content = {};
+            for (var columnId in this.cells) {
+                description.content[columnId] = this.cells[columnId].toObject();
+            }
+            return description;
         }
 
-        //Todo: don't provide the following function - either improve the constructor, or make a factory method
-        fromObject(rowId: string, representation: any): void {
-            assert(false, "not implemented yet");
-        }
     } 
 }
 

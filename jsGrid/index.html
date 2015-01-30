@@ -9,59 +9,36 @@
     <link rel="stylesheet" href="css/jsGrid.css" type="text/css" />
     <script src="lib/jQuery/jquery-2.1.3.js"></script>
     <script src="Debugging.js"></script>
+    <script src="TypeDefinitions.js"></script>
     <script src="jsGrid.js"></script>
     <script src="Column.js"></script>
     <script src="Cell.js"></script>
     <script src="Row.js"></script>
+    <script type="text/javascript">
+        function generateTable() {
+            var descr = $("#tableDescription").val();
+            var obj;
+            try{
+                obj = JSON.parse(descr);
+            } catch (e) {
+                alert("Invalid JSON\n" + e.message);
+                return;
+            }            
+            new JsGrid.Table("#content", obj);
+        }
+    </script>
+    </head>
+    <body>
+        <div id="header">
+            <h1>jsGrid Demo</h1>
+            <div id="tools">
+                <textarea id="tableDescription">{"columns":[{"columnId":"jsc1","defaultTitleContent":"jsc1","defaultBodyContent":""},{"columnId":"jsc2","defaultTitleContent":"2. Spalte","defaultBodyContent":"---"}],"rows":[{"rowId":"Title row","content":{"jsc1":"jsc1","jsc2":"2. Spalte"}},{"rowId":"jsr2","content":{"jsc1":"column 1","jsc2":"column 2"}},{"rowId":"jsr1","content":{"jsc1":"First cell","jsc2":"Second cell"}},{"rowId":"jsr3","content":{"jsc1":"!!!","jsc2":"---"}},{"rowId":"jsr4","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr5","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr6","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr7","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr8","content":{"jsc1":"","jsc2":"---"}}],"titleRowCount":2}</textarea>
+                <input type="button" value="Generate Table" onclick="generateTable()"/>
+            </div>
+        </div>
 
-</head>
-<body>
-<h1>jsGrid Demo</h1>
 
-    <div id="content">
-
-        <!--<table>
-            <thead>
-                <tr>
-                    <th>first name</th>
-                    <th>last name</th>
-                    <th>birth date</th>
-                    <th>balance</th>
-                    <th>email</th>
-                </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>{{row.firstName}}</td>
-                <td>{{row.lastName}}</td>
-                <td>{{row.birthDate}}</td>
-                <td>{{row.balance}}</td>
-                <td>{{row.email}}</td>
-            </tr>
-            <tr>
-                <td>{{row.firstName}}</td>
-                <td>{{row.lastName}}</td>
-                <td>{{row.birthDate}}</td>
-                <td>{{row.balance}}</td>
-                <td>{{row.email}}</td>
-            </tr>
-            <tr>
-                <td>{{row.firstName}}</td>
-                <td>{{row.lastName}}</td>
-                <td>{{row.birthDate}}</td>
-                <td>{{row.balance}}</td>
-                <td>{{row.email}}</td>
-            </tr>
-            <tr>
-                <td>{{row.firstName}}</td>
-                <td>{{row.lastName}}</td>
-                <td>{{row.birthDate}}</td>
-                <td>{{row.balance}}</td>
-                <td>{{row.email}}</td>
-            </tr>
-            </tbody>
-        </table>-->
-
-    </div>
-</body>
+        <div id="content">
+        </div>
+    </body>
 </html>
