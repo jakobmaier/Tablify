@@ -17,11 +17,11 @@ module JsGrid {
      * Contains all Tables, that are currently active on the web page.
      */
     class TableStore {
-        /*readonly*/ tableList: Table[] = [];  //List of all Tables that are available on the page. This list is neccessary in order to find/retrieve Table objects by an element selector
+        /*[Readonly]*/ tableList: Table[] = [];                 //List of all Tables that are available on the page. This list is neccessary in order to find/retrieve Table objects by an element selector
       
         //Callback handlers:
-        onTableRegistered: (table: Table) => void = null;
-        onTableUnregistered: (table: Table) => void = null;
+        onTableRegistered: (table: Table) => void = null;       //Is called everytime a new table is initialised
+        onTableUnregistered: (table: Table) => void = null;     //Is called everytime an existing table is destroyed
 
 
 
@@ -55,6 +55,7 @@ module JsGrid {
         }
 
         /*
+         * [Internal]
          * Adds a table to the internal list
          */
         registerTable(table: Table): void {
@@ -66,6 +67,7 @@ module JsGrid {
         }
 
         /*
+         * [Internal]
          * Removes a table from the internal list
          */
         unregisterTable(table: Table): void {
@@ -91,34 +93,33 @@ module JsGrid {
   
     export class Table {
         //References to commonly used HTML elements:
-        /*readonly*/ table: JQuery; //<table>
-        private thead: JQuery;      //<thead>
-        private tbody: JQuery;      //<tbody>
+        /*[Readonly]*/ table: JQuery;   //<table>
+        private thead: JQuery;          //<thead>
+        private tbody: JQuery;          //<tbody>
 
     
         private static gridIdSequence: number = 0;      //Used to auto-generate unique ids
-        private _gridId: string;                        //Unique grid id
-        get gridId(): string {
-            return this._gridId;
-        }
+        /*[Readonly]*/ gridId: string;                  //Unique grid id
+       
 
         //Column properties:
-        private columns: { [key: string]: Column; } = {};        // { "columnId": Column, ... }
+        private sortedColumns: Column[] = [];           //All columns, sorted from left to right.
+        private columns: { [key: string]: Column; } = {};        // All rows, sorted by their id
         //var columns: Map<string, Column>;             //better alternative to the above definition. However, this is part of EcmaScript6 and currently not supported very well
-
+        
         //Table content - each row is referenced twice for faster access:
-        private titleRows: Row[] = [];                  // Rows, which are part of the table head. Sorted by their output order.
-        private bodyRows: Row[] = [];                   // Rows, containing the data. Sorted by their output order.
-        private rows: { [key: string]: Row; } = {};     //All rows, sorted by their ID
+        private titleRows: Row[] = [];                  //Rows, which are part of the table head. Sorted by their output order.
+        private bodyRows: Row[] = [];                   //Rows, containing the data. Sorted by their output order.
+        private rows: { [key: string]: Row; } = {};     //All rows, sorted by their id
  
         /*
-         * Generates a new JsGrid Table
+         * Generates and returns a new JsGrid Table     (note: if the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
          * @identifier      string              JQuery-Selector. Is resolved to a JQuery element (see below)
          *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the JsGrid is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
          * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
          */
-        constructor(identifier: string|JQuery, description?: TableDescription) {
-            this._gridId = "jsg" + (++Table.gridIdSequence);
+        constructor(identifier: string|JQuery, description?: TableDescription|Table) {
+            this.gridId = "jsg" + (++Table.gridIdSequence);
             if (typeof identifier === "string") {
                 this.table = $(identifier);                     //selector
             } else {
@@ -137,7 +138,7 @@ module JsGrid {
             } else if (this.table.hasClass("jsGrid")){          //Maybe the table has already been initialised with a jsGrid? If yes, return the already existing object and don't create a new one
                 var existingObj = tableStore.getTableByElement(this.table);
                 if (existingObj !== null) {                     //The table is already managed by another Table-instance
-                    logger.warning("The given HTML element is already managed by another Table instance (\""+existingObj._gridId+"\"). The old instance will be returned instead of creating a new one.");
+                    logger.warning("The given HTML element is already managed by another Table instance (\""+existingObj.gridId+"\"). The old instance will be returned instead of creating a new one.");
                     return existingObj;
                 }
             }
@@ -151,12 +152,19 @@ module JsGrid {
                 return;
             }
         //Generate the table content:
-            for (var i = 0; i < description.columns.length; ++i) {
-                this.addColumn( description.columns[i] );
+            var descriptionObj: TableDescription;
+            if (description instanceof Table) {
+                descriptionObj = (<Table>description).toObject(true);
+            } else {
+                descriptionObj = <TableDescription>description;
             }
-            var titleRowCount = description.titleRowCount || 0;
-            for (var i = 0; i < description.rows.length; ++i) {
-                this.addRow(titleRowCount > i ? RowType.title : RowType.body, description.rows[i]);
+
+            for (var i = 0; i < descriptionObj.columns.length; ++i) {
+                this.addColumn(descriptionObj.columns[i] );
+            }
+            var titleRowCount = descriptionObj.titleRowCount || 0;
+            for (var i = 0; i < descriptionObj.rows.length; ++i) {
+                this.addRow(titleRowCount > i ? RowType.title : RowType.body, descriptionObj.rows[i]);
             }
         }
         
@@ -190,13 +198,14 @@ module JsGrid {
          *              ColumnDescription           Used for deserialisation.
          */
         addColumn(columnDef?: ColumnDefinition|ColumnDescription): void {
-            var column = new Column(columnDef);
+            var column = new Column(this, columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
                 logger.error("There is already a column with the id \"" + columnId + "\".");
                 return;
             }
             this.columns[columnId] = column;
+            this.sortedColumns.push(column);
 
             var content: { [key: string]: CellDefinition; } = {};
             if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails / ColumnDescription
@@ -236,7 +245,7 @@ module JsGrid {
          *              RowDescription          Used for deserialisation.
          */
         addRow(rowType: RowType, rowDef?: RowDefinition|RowDescription): void {
-            var row = new Row(rowType, rowDef, this.columns);
+            var row = new Row(this, rowType, rowDef, this.columns);
             var rowId: string = row.rowId;
             
             if (rowId in this.rows) {
@@ -256,6 +265,99 @@ module JsGrid {
         }
 
 
+        /*
+         * Returns the required row. A row contains all cells.
+         * @identifier      string          Returns the row with the given rowId. If the id doesn't exist, null is returned
+         *                  number          Returns the row with the specified index. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, null is being returned.
+         *                                  Note that passing numbers as strings (eg. getRow("4");) will be interpreted as a rowId, rather than an index.
+         * @return          Row             If the requested row exists, it will be returned. Otherwise, null is returned.
+         */
+        getRow(identifier: string|number): Row {
+            if (typeof identifier === "number") {
+                if (identifier < this.titleRows.length) {                   //A titleRow should be returned
+                    return this.titleRows[identifier];
+                }
+                return this.bodyRows[identifier - this.titleRows.length] || null;  //A bodyRow should be returned
+            }
+            return this.rows[<string>identifier] || null;
+        }
+
+
+        /*
+         * Returns the required column. The column does not contains cells.
+         * @identifier      string          Returns the column with the given columnId. If the id doesn't exist, null is returned
+         *                  number          Returns the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
+         *                                  Note that passing numbers as strings (eg. getColumn("4");) will be interpreted as a columnId, rather than an index.
+         * @return          Column          If the requested column exists, it will be returned. Otherwise, null is returned.
+         */
+        getColumn(identifier: string|number): Column {
+            if (typeof identifier === "number") {        
+                return this.sortedColumns[identifier] || null;
+            }
+            return this.columns[<string>identifier] || null;
+        }
+
+        /*
+         * Returns all cells of a sepcific column.
+         * @identifier      string                      Returns the cells of the column with the given columnId. If the column doesn't exist, null is returned
+         *                  number                      Returns the cells of the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
+         *                                              Note that passing numbers as strings (eg. getColumnCells("4");) will be interpreted as a columnId, rather than an index.
+         * @return          { rowId: Cell, ... }        A list with all cells that are present within the column. The index represents the rowId. If the given column does not exist, null is being returned.
+         */
+        getColumnCells(identifier: string|number): { [key: string]: Cell; } {
+            if (this.getColumn(identifier) === null) {  //The column does not exist
+                return null;
+            }
+            var cells: { [key: string]: Cell; } = {};
+            for (var rowId in this.rows) {
+                cells[rowId] = this.rows[rowId].getCell(identifier);
+            }
+            return cells;
+        }
+        
+
+        /*
+         * Returns the specified cell.
+         * @rowIdentifier       string          Specifies the rowId of the cell. If the row doesn't exist, null is returned
+         *                      number          Specifies the row index of the cell. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, null is being returned.
+         *                                      Note that passing numbers as strings (eg. getCell("4", "colId");) will be interpreted as a rowId, rather than an index.
+         * @columnIdentifier    string          Specifies the columnId of the cell. If the column doesn't exist, null is returned
+         *                      number          Specifies the column index of the cell. The first (left) column has index 0. If the index is out of bounds, null is being returned.
+         *                                      Note that passing numbers as strings (eg. getCell("rowId", "4");) will be interpreted as a columnId, rather than an index.
+         * @return              Cell            The cell within the given row and column. If either the row or the column doesn't exist, null is returned.
+         */
+        getCell(rowIdentifier: string|number, columnIdentifier: string|number): Cell {
+            var row = this.getRow(rowIdentifier);
+            if (row === null) {
+                return null;
+            }
+            return row.getCell(columnIdentifier);
+        }
+
+        /*
+         * Returns the number of rows in the table or table section (title/body)
+         * @rowType     RowType     optional; If no value is given, the total number of rows is returned. If "RowType.title" is given, the number of titleRows is returned. If "RowType.body" is given, the number of rows within the table body is returned.
+         * @return      number      The number of rows within the table or table section (title/body)
+         */
+        getRowCount(rowType?: RowType): number {
+            if (rowType === RowType.title) {
+                return this.titleRows.length;
+            }
+            if (rowType === RowType.body) {
+                return this.bodyRows.length;
+            }
+            return this.titleRows.length + this.bodyRows.length;
+        }
+        
+        /*
+         * Returns the number of columns in the table
+         * @return      number      The number of columns within the table
+         */
+        getColumnCount(): number {
+            return this.sortedColumns.length;
+        }
+
+        
         /*
          * Converts the Table into an object. Used for serialisation.
          * Performs a deepCopy.

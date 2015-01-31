@@ -1,0 +1,115 @@
+User-API
+########
+    This documentation only contains information about the user-API.
+    There might be members/functions publicy available to the user which are reserved for internal usage only - this kind of members/functions ARE NOT DOCUMENTED here and are usually marked "[Internal]".
+
+
+
+
+TableStore (Singleton)
+***********************************************************
+    tableList               readonly Table[]                                                        // List with all Tables, that are currently active on the web page
+
+    getTableByElement       (table: JQuery): Table                                                  // Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
+    getTableById            (gridId: string): Table                                                 // Returns the Table-instance with a specific id. If the id does not exist, null is returned
+
+Eventhandlers:
+    onTableRegistered       (table: Table) => void = null;                                          // Is called everytime a new table is initialised
+    onTableUnregistered     (table: Table) => void = null;                                          // Is called everytime an existing table is destroyed
+
+
+
+
+Table (Manages exacly one HTMLTableElement)
+***********************************************************
+    table                   readonly JQuery                                                         // References the HTML table element
+    gridId                  readonly string;                                                        // Unique grid id
+
+    constructor             (identifier: string|JQuery, description?: TableDescription|Table)       //Creates a new Table / manages a HTMLTableElement
+
+    representsTable         (table: JQuery): boolean                                                // Returns true, if the object represents the given table-element
+    destroy                 (): void                                                                // Destroys the JsGrid Table. This object will get unusable.
+    addColumn               (columnDef?: ColumnDefinition|ColumnDescription): void                  // Adds a new column to the table.
+    addRow                  (rowType: RowType, rowDef?: RowDefinition|RowDescription): void         // Adds a new row to the table
+    getRow                  (identifier: string|number): Row                                        // Returns the required row. A row contains all cells.
+    getColumn               (identifier: string|number): Column                                     // Returns the required column. The column does not contains cells.
+    getColumnCells          (identifier: string|number): { [key: string]: Cell; }                   // Returns all cells of a sepcific column.
+    getCell                 (rowIdentifier: string|number, columnIdentifier: string|number): Cell   // Returns the specified cell.
+    getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
+    getColumnCount          (): number                                                              // Returns the number of columns in the table
+
+    toObject                (includeContent?: boolean): TableDescription                            // Converts the Table into an object. Used for serialisation.
+
+
+
+Row (Manages exacly one row within a Table)
+***********************************************************
+    rowId                   readonly string;                                                        // internal id, unique within the table
+    rowType                 readonly RowType;                                                       // title- / body- / footer- row
+
+    getCell                 (column: string|number): Cell                                           // Returns the cell of a sepcific column.
+
+    toObject                (includeContent?: boolean): RowDescription                              // Converts the Row into an object. Used for serialisation.
+
+
+
+
+
+Column (Contains basic column Information, similar to a plain datatype)
+***********************************************************
+    columnId                readonly string                                                         // internal id, unique within the table
+    defaultTitleContent     Cell                                                                    // Is used for rendering title cells that have no content
+    defaultBodyContent      Cell                                                                    // Is used for rendering body cells that have no content
+
+    toObject                (): ColumnDescription                                                   // Converts the Column into an object. Used for serialisation.
+
+Cell
+***********************************************************
+    content                 readonly string;                                                        // content of the cell. Might contain HTML.
+
+    toObject                (): CellDescription                                                     // Converts the Cell into an object. Used for serialisation.
+
+
+
+
+
+
+
+
+
+
+
+TableDescription - How to initialise a table:
+***********************************************************
+    {   columns: [
+            "columnId1",                            //string = columnId
+            {   columnId: "id2",                    //object = ColumnDescription
+                defaultTitleContent: "content",     //string = Cellcontent
+                defaultBodyContent: {               //object = Celldescription (note: existing cell is also possible)
+                    content: "data"
+                }
+            },
+            {},                                     //all ColumnDescription properties are optional
+            new Column(),                           //object = existing column
+            ...
+        ],
+        rows: [
+            "rowId1",                               //string = rowId
+            {   rowId: "id2",                       //object = RowDescription
+                content: {                          //object = ColumnDescription
+                    "columnId1": "content",         //string = Cellcontent
+                    "id2": {                        //object = Celldescription
+                        content: "data"
+                    },
+                    other: {},                      //all Celldescription properties are optional
+                    other: new Cell(),              //object = existing column
+                    ...
+                }
+            },
+            {},                                     //all Rowdescription properties are optional
+            new Row(),                              //object = existing row
+            ...
+        ],
+        titleRowCount: 0                            //number of rows, that belong to the title
+    }
+

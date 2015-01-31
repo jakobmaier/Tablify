@@ -4,11 +4,12 @@ module JsGrid {
 
     export class Cell {
 
-        private element: JQuery = null;     //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
+        private element: JQuery = null;         //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
 
-        content: string;
+        /*[Readonly]*/ content: string;         //content of the cell. Might contain HTML.
 
         /*
+         * [Internal]
          * Generates a new Cell
          * @cellDef     string                  The (html-)content of the cell. The content is not html-escaped
          *              Cell                    The cell will be deep-copied.  DOM-connections will not be copied.
@@ -29,6 +30,7 @@ module JsGrid {
         }
 
         /*
+         * [Internal]
          * Returns a JQuery->HTMLElement, representing the Cell. This element can be attached to the DOM.
          * @tagtype     string      Can either be "th" for title rows or "td" for body rows.
          * @columnId    string      Id of the corresponsing column (used as a tag attribute)

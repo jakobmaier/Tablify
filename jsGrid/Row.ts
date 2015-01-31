@@ -3,17 +3,20 @@
 module JsGrid {
 
     export class Row {
+        private table: Table;                           //The table where this row belongs to
 
-        private element: JQuery = null;             //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
+        private element: JQuery = null;                 //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
         
-        private static rowIdSequence: number = 0;   //Used to auto-generate unique ids, if the user didn't pass an Id
-        rowId: string;                              //internal id
-        rowType: RowType;                           //title- / body- / footer- row
-        cells: { [key: string]: Cell; } = {}        // {columnId: Cell, ...}
+        private static rowIdSequence: number = 0;       //Used to auto-generate unique ids, if the user didn't pass an Id (note that this sequence produces globally unique ids)
+        /*[Readonly]*/ rowId: string;                   //internal id, unique within the table
+        /*[Readonly]*/ rowType: RowType;                //title- / body- / footer- row
+        private cells: { [key: string]: Cell; } = {}    // {columnId: Cell, ...}
 
 
         /*
+         * [Internal]
          * Generates a new Row
+         * @table       Table                   The table where this row belongs to
          * @rowType     RowType                 The type of the row (titleRow, content, footer)
          * @rowDef      null                    The rowId is generated automatically
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
@@ -22,8 +25,9 @@ module JsGrid {
          *              RowDescription          Used for deserialisation.
          * @columns     Column[]                The currently existing columns in the table. The Row will get one cell per column, the content depends on the parameter "definition".
          */
-        constructor(rowType: RowType, rowDef: RowDefinition|RowDescription, columns: { [key: string]: Column; }) {
-            assert(typeof rowType === "number" && typeof columns === "object");
+        constructor(table: Table, rowType: RowType, rowDef: RowDefinition|RowDescription, columns: { [key: string]: Column; }) {
+            assert(table instanceof Table && typeof rowType === "number" && typeof columns === "object");
+            this.table = table;
 
             var rowInfo: RowDefinitionDetails;
             if (typeof rowDef === "string") {
@@ -72,6 +76,7 @@ module JsGrid {
         }
 
         /*
+         * [Internal]
          * Adds a new column to the row. Is called everytime a column is added to the table.
          * @column    Column            Information about the new Column
          * @content   CellDefinition    The cell that should be assigned to the new column. A new copy of this parameter is generated.
@@ -97,6 +102,26 @@ module JsGrid {
 
 
         /*
+         * Returns the cell of a sepcific column.
+         * @identifier      string                      Returns the cell of the column with the given columnId. If the column doesn't exist, null is returned
+         *                  number                      Returns the cell of the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
+         *                                              Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a columnId, rather than an index.
+         * @return          Cell                        The cell of the given column. If the column does not exist, null is being returned.
+         */
+        getCell(column: string|number): Cell {
+            if (typeof column === "number") {           //Get the column with that index
+                var col = this.table.getColumn(column);
+                if (col === null) {     //The column does not exist
+                    return null;
+                }
+                column = col.columnId;
+            }
+            return this.cells[<string>column] || null;
+        }
+        
+                
+        /*
+         * [Internal]
          * Returns a JQuery->HTMLElement, representing the Row (including all cells). This element can be attached to the DOM.
          * @return      JQuery      Element, that can be insterted into the DOM
          */

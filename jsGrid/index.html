@@ -27,7 +27,7 @@
                 alert("Invalid JSON\n" + e.message);
                 return;
             }            
-            new JsGrid.Table("#content", obj);
+            window.t = new JsGrid.Table("#content", obj);
         }
 
         /*
