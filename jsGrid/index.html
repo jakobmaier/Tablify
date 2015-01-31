@@ -15,6 +15,9 @@
     <script src="Cell.js"></script>
     <script src="Row.js"></script>
     <script type="text/javascript">
+        /*
+         * Called, when the "Generate Table" Button is pressed
+         */
         function generateTable() {
             var descr = $("#tableDescription").val();
             var obj;
@@ -26,19 +29,70 @@
             }            
             new JsGrid.Table("#content", obj);
         }
+
+        /*
+         * Registers event handlers, so that "updateTableList()" is called everytime a new table is generated / an existing table is destroyed
+         */
+        $(document).ready(function () {
+            JsGrid.tableStore.onTableRegistered = function (table) {
+                updateTableList();
+            };
+            JsGrid.tableStore.onTableUnregistered = function (table) {
+                updateTableList();
+            };
+            updateTableList();    
+
+            $("#tools textarea").focusin(function () {
+                $(this).css("height", "500%");
+            });
+            $("#tools textarea").focusout(function () {
+                $(this).css("height", "");
+            });
+        });
+
+
+        /*
+         * Updates the select-box's content (Is called everytime a new table is generated)
+         */
+        function updateTableList() {
+            $("#tableSelect").empty();
+            var tableList = JsGrid.tableStore.tableList;
+            for (var i = 0; i < tableList.length; ++i) {
+                $("#tableSelect").append("<option>" + tableList[i].gridId + "</option>");
+            }
+        }
+
+        /*
+         * Called, when the "-->" Button (Serialise button) is pressed
+         */
+        function serialiseTable() {
+            var gridId = $("#tableSelect").val();
+            var table = JsGrid.tableStore.getTableById(gridId);
+            var withData = $("#includeData").is(':checked');
+            if (table !== null) {
+                $("#tableDescription").val(JSON.stringify(table.toObject(withData), null, 4));
+            }
+        }
     </script>
     </head>
-    <body>
-        <div id="header">
-            <h1>jsGrid Demo</h1>
-            <div id="tools">
-                <textarea id="tableDescription">{"columns":[{"columnId":"jsc1","defaultTitleContent":"jsc1","defaultBodyContent":""},{"columnId":"jsc2","defaultTitleContent":"2. Spalte","defaultBodyContent":"---"}],"rows":[{"rowId":"Title row","content":{"jsc1":"jsc1","jsc2":"2. Spalte"}},{"rowId":"jsr2","content":{"jsc1":"column 1","jsc2":"column 2"}},{"rowId":"jsr1","content":{"jsc1":"First cell","jsc2":"Second cell"}},{"rowId":"jsr3","content":{"jsc1":"!!!","jsc2":"---"}},{"rowId":"jsr4","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr5","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr6","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr7","content":{"jsc1":"","jsc2":"---"}},{"rowId":"jsr8","content":{"jsc1":"","jsc2":"---"}}],"titleRowCount":2}</textarea>
-                <input type="button" value="Generate Table" onclick="generateTable()"/>
-            </div>
+<body>
+    <div id="header">
+        <h1>jsGrid Demo</h1>
+        <div id="tools">
+            <span id="serialise">
+                <select id="tableSelect"></select>
+                <span>
+                    <label><input id="includeData" type="checkbox"> Include data</label>
+                </span>
+                <input type="button" value="-->" onclick="serialiseTable()" />
+            </span>
+            <textarea id="tableDescription">{"columns":[{"columnId": "col1", "defaultBodyContent":"---"}],"rows":["row1", "row2"]}</textarea>
+            <input type="button" id="generateTable" value="Generate Table" onclick="generateTable()" />
         </div>
+    </div>
 
 
-        <div id="content">
-        </div>
-    </body>
+    <div id="content">
+    </div>
+</body>
 </html>

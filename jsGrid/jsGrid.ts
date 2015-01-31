@@ -13,16 +13,94 @@ Other libs:
 type Row = string;
 
 module JsGrid {
+    /*
+     * Contains all Tables, that are currently active on the web page.
+     */
+    class TableStore {
+        /*readonly*/ tableList: Table[] = [];  //List of all Tables that are available on the page. This list is neccessary in order to find/retrieve Table objects by an element selector
+      
+        //Callback handlers:
+        onTableRegistered: (table: Table) => void = null;
+        onTableUnregistered: (table: Table) => void = null;
+
+
+
+        /*
+         * Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
+         * @table   JQuery      References an HTMLTableElement. If this HTMLTableElement is managed by an existing table object, the corresponding object is returned
+         * @return  Table       The Table-Object that manages the given HTTMLTableElement. If the Element isn't managed, null is being returned.
+         */
+        getTableByElement(table: JQuery): Table {
+            for (var i = 0; i < this.tableList.length; ++i) {
+                if (this.tableList[i].representsTable(table)) {
+                    return this.tableList[i];
+                }
+            }
+            return null;
+        }
+
+        /*
+         * Returns the Table-instance with a specific id. If the id does not exist, null is returned
+         * @gridId  string      gridId of the table, whose instance should be returned
+         * @return  Table       The Table-Object with the given gridId. If the id does not exist, null is being returned.
+         */
+        getTableById(gridId: string): Table {
+            assert_argumentsNotNull(arguments);
+            for (var i = 0; i < this.tableList.length; ++i) {
+                if (this.tableList[i].gridId === gridId) {
+                    return this.tableList[i];
+                }
+            }
+            return null;
+        }
+
+        /*
+         * Adds a table to the internal list
+         */
+        registerTable(table: Table): void {
+            assert_argumentsNotNull(arguments);
+            this.tableList.push(table);
+            if (typeof this.onTableRegistered === "function") {
+                this.onTableRegistered(table);
+            }
+        }
+
+        /*
+         * Removes a table from the internal list
+         */
+        unregisterTable(table: Table): void {
+            assert_argumentsNotNull(arguments);
+            for (var i = 0; i < this.tableList.length; ++i) {
+                if (this.tableList[i] === table) {
+                    this.tableList.splice(i, 1);
+                    if (typeof this.onTableUnregistered === "function") {
+                        this.onTableUnregistered(table);
+                    }
+                    return;
+                }
+            }
+            logger.error("Unregister table failed. No such table in the list.");
+        }
+    };
+    export var tableStore: TableStore = new TableStore();    //Singleton
+
+
+
+
+
   
     export class Table {
         //References to commonly used HTML elements:
-        private table: JQuery;  //<table>
-        private thead: JQuery;  //<thead>
-        private tbody: JQuery;  //<tbody>
+        /*readonly*/ table: JQuery; //<table>
+        private thead: JQuery;      //<thead>
+        private tbody: JQuery;      //<tbody>
 
     
         private static gridIdSequence: number = 0;      //Used to auto-generate unique ids
-        private gridId: string;                         //Unique grid id
+        private _gridId: string;                        //Unique grid id
+        get gridId(): string {
+            return this._gridId;
+        }
 
         //Column properties:
         private columns: { [key: string]: Column; } = {};        // { "columnId": Column, ... }
@@ -40,7 +118,7 @@ module JsGrid {
          * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
          */
         constructor(identifier: string|JQuery, description?: TableDescription) {
-            this.gridId = "jsg" + (++Table.gridIdSequence);
+            this._gridId = "jsg" + (++Table.gridIdSequence);
             if (typeof identifier === "string") {
                 this.table = $(identifier);                     //selector
             } else {
@@ -56,8 +134,15 @@ module JsGrid {
                 var table = $("<table><thead></thead><tbody></tbody></table>");
                 this.table.append(table);
                 this.table = table;
+            } else if (this.table.hasClass("jsGrid")){          //Maybe the table has already been initialised with a jsGrid? If yes, return the already existing object and don't create a new one
+                var existingObj = tableStore.getTableByElement(this.table);
+                if (existingObj !== null) {                     //The table is already managed by another Table-instance
+                    logger.warning("The given HTML element is already managed by another Table instance (\""+existingObj._gridId+"\"). The old instance will be returned instead of creating a new one.");
+                    return existingObj;
+                }
             }
             this.table.addClass("jsGrid");
+            tableStore.registerTable(this);
 
             this.thead = this.table.find("thead");
             this.tbody = this.table.find("tbody");
@@ -75,13 +160,24 @@ module JsGrid {
             }
         }
         
+        /*
+         * Returns true, if the object represents the given table-element
+         * @table   JQuery      References a HTMLElement. If this HTMLElement is managed by this table object, true is returned
+         * @return  boolean     true: The given HTMLElement (<table>) is managed by this Table-instance. Otherwise, false is returned
+         */
+        representsTable(table: JQuery): boolean {
+            return (this.table === table);
+        }
 
         /*
          * Destroys the JsGrid Table. This object will get unusable.
          */
         destroy(): void {
+            tableStore.unregisterTable(this);
             this.table.removeClass("jsGrid");
             this.table = null;
+            this.rows = null;
+            this.columns = null;
         }
     
 
@@ -258,5 +354,8 @@ window.onload = () => {
 
     new JsGrid.Table("#content", grid.toObject(true));
     new JsGrid.Table("#content", grid.toObject(false));
+
+    var copyTable = new JsGrid.Table(grid.table);
+    console.log(copyTable === grid);
 };
 

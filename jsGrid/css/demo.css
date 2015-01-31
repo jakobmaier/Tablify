@@ -47,23 +47,51 @@ h1 {
     display: inline-block;
 }
 
+
+
+
+
+
 #tools{
+    width: 60%;
+    display: flex;
+    justify-content: space-between;
+
     position: absolute;
     top: 0;
     bottom: 0;
     right: 0;
 }
 
-#tools input{
+#tools #serialise{
     margin: 2px;
-    float: right;
+    width: 8%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
-textarea#tableDescription{
-    margin: 2px;
-    height: calc(100% - 4px);
+#tools #serialise>span{
+    white-space: nowrap;
 }
 
+#tools #serialise>select, #tools #serialise>input{
+    width: 100%;
+}
+
+
+#tools textarea{
+    flex-grow: 1;
+}
+
+#tools textarea#tableDescription{
+    margin: 2px;
+    width: 75%;
+}
+
+#tools #generateTable{
+    margin: 2px;
+}
 
 
 

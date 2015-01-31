@@ -128,7 +128,6 @@ module JsGrid {
             var description : RowDescription = {
                 rowId:   this.rowId
             };
-            console.log(includeContent);
             if (includeContent === false) {      //Don't include any data
                 return description;
             }
