@@ -5,7 +5,7 @@
 
 module JsGrid {
 
-    export var inputValidation: boolean = true;     //For debugging purposes only: If true, input parameters are better validated and log messages will be generated
+    //export var inputValidation: boolean = true;     //For debugging purposes only: If true, input parameters are better validated and log messages will be generated
 
 
     interface ILogger {

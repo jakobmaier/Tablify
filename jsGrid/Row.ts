@@ -52,7 +52,16 @@ module JsGrid {
             this.rowType = rowType;
 
             logger.info("Ceating new row \"" + this.rowId + "\".");
-           
+                       
+            if (rowInfo.generateMissingColumns === true) {      //If the content contains data for non-existing columns, the columns should not be generated
+                //When a column is generated, the argument "columns" will automatically gain an additional field. This field is required in the next loop, which generates the cells for all existing columns.
+                for (var columnId in rowInfo.content) {
+                    if (!(columnId in columns)) {       //This column does not exist yet                   
+                        table.addColumn(columnId);      //this row is not part of the table yet -> if we add the column, the cells of this row can't be 
+                    }
+                }
+            }
+                        
             for (var columnId in columns) {             //generate a cell for each column
                 if (columnId in rowInfo.content) {
                     this.cells[columnId] = new Cell( rowInfo.content[columnId] );
@@ -66,12 +75,6 @@ module JsGrid {
                         break;
                     default: assert(false, "Invalid RowType given.");
                 }                
-            }
-            if (inputValidation) {  //Check if the rowDefinition has some invalid data
-                //todo: regex-check of rowId here, so that it doesn't contain special characters that can ruin html
-                for (var columnId in rowInfo.content) {
-                    logger.warningIf(!(columnId in columns), "The row definition of row \"" + this.rowId + "\" contains data for column \"" + columnId + "\", although there is no such column.");
-                }
             }
         }
 
@@ -105,7 +108,7 @@ module JsGrid {
 
         /*
          * [Internal]
-         * Adds a new column (=cell) to the row. Is called everytime a column is added to the table.
+         * Adds a new column (=cell) to the row. Is called everytime a column is added to the table. Also updates DOM.
          * @column    Column            Information about the new Column
          * @content   CellDefinition    The cell that should be assigned to the new column. A new copy of this parameter is generated.
          */

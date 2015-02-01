@@ -49,16 +49,11 @@ module JsGrid {
                        
             this.defaultTitleContent = new Cell(columnDefDetails.defaultTitleContent || this.columnId);
             this.defaultBodyContent = new Cell(columnDefDetails.defaultBodyContent);
-
-
-            if (inputValidation) {  //Check if the columnDefinition has some invalid data
-                //todo: regex-check of columnId here, so that it doesn't contain special characters that can ruin html
-            }
         }
 
         /*
          * [Internal]
-         * Destroys the ´Column. This object will get unusable and members as well as member functions must not be used afterwards.
+         * Destroys the Column. This object will get unusable and members as well as member functions must not be used afterwards.
          * Note that this function does not remove the column from the DOM.
          */
         destroy() {

@@ -7,8 +7,9 @@ module JsGrid {
 
 //Adding new Rows to an existing Table:
     export type RowDefinitionDetails = {
-        rowId?: string;
-        content?: { [key: string]: CellDefinition; };           //{ columnId: CellDefinition, ...}
+        rowId?:                     string;
+        content?:                   { [key: string]: CellDefinition; };     //{ columnId: CellDefinition, ...}
+        generateMissingColumns?:    boolean                                 // true: if the content contains columnIds that do not yet exist, a new column will be generated; false (default): not-existing columnIds will be ignored
     };
     export type RowDefinition = string | Row | RowDefinitionDetails;
     
@@ -22,10 +23,11 @@ module JsGrid {
         
         //The following information is needed to create cells when a new column is inserted (to define the content for each new cell):
         content?: { [key: string]: CellDefinition; };   //key == rowId;   { "rowId": CellDefinition};   If a specific row is not defined, the defaultContent is used
-        
+        generateMissingRows?: boolean                   // true: if the content contains rowIds that do not yet exist, a new row will be generated; false (default): not-existing rowIds will be ignored
+
         defaultTitleContent?: CellDefinition;
         defaultBodyContent?: CellDefinition;  
-        //defaultFooterContent?: CellDefinition;   
+        //defaultFooterContent?: CellDefinition; 
     };
     export type ColumnDefinition = string | Column | ColumnDefinitionDetails;
 

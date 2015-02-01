@@ -123,15 +123,26 @@ module JsGrid {
                 logger.error("There is already a column with the id \"" + columnId + "\".");
                 return;
             }
+            
+            var content: { [key: string]: CellDefinition; } = {};
+            var generateMissingRows: boolean = false;
+            if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails / ColumnDescription
+                content = (<ColumnDefinitionDetails>columnDef).content || {};
+                generateMissingRows = ((<ColumnDefinitionDetails>columnDef).generateMissingRows === true);
+            }
+            
+            if (generateMissingRows) {              //If the content contains data for non-existing rows, the rows should be generated   
+                for (var rowId in content) {
+                    if (!(rowId in this.rows)) {    //This row does not exist yet      
+                        this.addRow(RowType.body, rowId);
+                    }
+                }
+            }
+            
             this.columns[columnId] = column;
             this.sortedColumns.push(column);
 
-            var content: { [key: string]: CellDefinition; } = {};
-            if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails / ColumnDescription
-                content = (<ColumnDefinitionDetails>columnDef).content || {};
-            }
-            
-            //Add a new cell to each row:
+            //Add a new cell to each row (the DOM will be updated by each row):
             for (var rowId in this.rows) {
                 var row: Row = this.rows[rowId];
                 var cell: CellDefinition;
@@ -145,11 +156,6 @@ module JsGrid {
                     }
                 }
                 row.addColumn(column, cell);
-            }
-            if (inputValidation) {  //Check if the columnDefinition has some invalid data
-                for (var rowId in content) {
-                    logger.warningIf(!(rowId in this.rows), "The column definition of column \"" + column.columnId + "\" contains data for row \"" + rowId + "\", although there is no such row.");
-                }
             }
         }
         
@@ -550,7 +556,33 @@ window.onload = () => {
     new JsGrid.Table("#content", grid.toObject(true));
     new JsGrid.Table("#content", grid.toObject(false));
 
-    var copyTable = new JsGrid.Table(grid.table);
-    console.log(copyTable === grid);
+    //var copyTable = new JsGrid.Table(grid.table);
+    //console.log(copyTable === grid);
+
+
+    console.log("===================================================");
+    new JsGrid.Table("#content", {
+        "columns": [
+        ],
+        "rows": [
+            {
+                "rowId": "row1",
+                "content": {
+                    "col1": "cell1",
+                    "col2": "cell x"
+                },
+                "generateMissingColumns": true
+            },
+            {
+                "rowId": "row2", 
+                "content": {
+                    "col1": "cell2",
+                    "col2": "cell x"
+                },
+                "generateMissingColumns": true
+            }
+        ],
+        "titleRowCount": 0
+    });
 };
 
