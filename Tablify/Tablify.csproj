@@ -20,17 +20,18 @@
   <ItemGroup>
     <Content Include="css\demo.css" />
     <Content Include="index.html" />
-    <Content Include="css\jsGrid.css" />
+    <Content Include="css\tablify.css" />
     <Content Include="css\reset.css" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="TableStore.ts" />
+    <TypeScriptCompile Include="Tablify.ts" />
     <TypeScriptCompile Include="TypeDefinitions.ts" />
     <TypeScriptCompile Include="Debugging.ts" />
     <TypeScriptCompile Include="Cell.ts" />
     <TypeScriptCompile Include="Column.ts" />
-    <TypeScriptCompile Include="jsGrid.ts" />
+    <TypeScriptCompile Include="Table.ts" />
     <TypeScriptCompile Include="Row.ts" />
   </ItemGroup>
   <ItemGroup>
@@ -51,7 +52,10 @@
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">12.0</VisualStudioVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <RootNamespace>jsGrid</RootNamespace>
+    <RootNamespace>Tablify</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyName>Tablify</AssemblyName>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\WebApplications\Microsoft.WebApplication.targets" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\WebApplications\Microsoft.WebApplication.targets')" />

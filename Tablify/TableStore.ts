@@ -1,5 +1,7 @@
-﻿
-module JsGrid {
+﻿/// <reference path="Tablify.ts" />
+
+
+module Tablify {
 
     /*
      * Contains all Tables, that are currently active on the web page.
@@ -29,13 +31,13 @@ module JsGrid {
 
         /*
          * Returns the Table-instance with a specific id. If the id does not exist, null is returned
-         * @gridId  string      gridId of the table, whose instance should be returned
-         * @return  Table       The Table-Object with the given gridId. If the id does not exist, null is being returned.
+         * @tableId  string     tableId of the table, whose instance should be returned
+         * @return  Table       The Table-Object with the given tableId. If the id does not exist, null is being returned.
          */
-        getTableById(gridId: string): Table {
+        getTableById(tableId: string): Table {
             assert_argumentsNotNull(arguments);
             for (var i = 0; i < this.tableList.length; ++i) {
-                if (this.tableList[i].gridId === gridId) {
+                if (this.tableList[i].tableId === tableId) {
                     return this.tableList[i];
                 }
             }

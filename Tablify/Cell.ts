@@ -1,6 +1,6 @@
-﻿ /// <reference path="JsGrid.ts" />
+﻿ /// <reference path="Tablify.ts" />
 
-module JsGrid {
+module Tablify {
 
     export class Cell {
 

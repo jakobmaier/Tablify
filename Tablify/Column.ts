@@ -1,7 +1,7 @@
-﻿/// <reference path="JsGrid.ts" />
+﻿/// <reference path="Tablify.ts" />
 
 
-module JsGrid {
+module Tablify {
 
     export class Column {
         private table: Table;                           //The table where this column belongs to  

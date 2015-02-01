@@ -11,7 +11,7 @@ TableStore (Singleton)
     tableList               readonly Table[]                                                        // List with all Tables, that are currently active on the web page
 
     getTableByElement       (table: JQuery): Table                                                  // Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
-    getTableById            (gridId: string): Table                                                 // Returns the Table-instance with a specific id. If the id does not exist, null is returned
+    getTableById            (tableId: string): Table                                                 // Returns the Table-instance with a specific id. If the id does not exist, null is returned
 
 Eventhandlers:
     onTableRegistered       (table: Table) => void = null;                                          // Is called everytime a new table is initialised
@@ -23,12 +23,12 @@ Eventhandlers:
 Table (Manages exacly one HTMLTableElement)
 ***********************************************************
     table                   readonly JQuery                                                         // References the HTML table element
-    gridId                  readonly string;                                                        // Unique grid id
+    tableId                  readonly string;                                                       // Unique table id
 
     constructor             (identifier: string|JQuery, description?: TableDescription|Table)       //Creates a new Table / manages a HTMLTableElement
 
     representsTable         (table: JQuery): boolean                                                // Returns true, if the object represents the given table-element
-    destroy                 (): void                                                                // Destroys the JsGrid Table. This object will get unusable.
+    destroy                 (): void                                                                // Destroys the Tablify Table. This object will get unusable.
 
     addColumn               (columnDef?: ColumnDefinition|ColumnDescription): void                  // Adds a new column to the table.
     addRow                  (rowType: RowType, rowDef?: RowDefinition|RowDescription): void         // Adds a new row to the table

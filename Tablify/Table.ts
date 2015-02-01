@@ -1,17 +1,7 @@
-﻿/// <reference path="lib/jQuery/jquery.d.ts"/>
-/// <reference path="Debugging.ts" />
-/// <reference path="TypeDefinitions.ts" />
+﻿/// <reference path="Tablify.ts" />
 
 
-/*
-Other libs:
-    http://webix.com/demo/datatable/
-    http://www.datatables.net/blog/2014-11-07
-    http://lorenzofox3.github.io/smart-table-website/
-*/
-
-
-module JsGrid {
+module Tablify {
       
     export class Table {
         //References to commonly used HTML elements:
@@ -20,8 +10,8 @@ module JsGrid {
         private tbody: JQuery;          //<tbody>
 
     
-        private static gridIdSequence: number = 0;      //Used to auto-generate unique ids
-        /*[Readonly]*/ gridId: string;                  //Unique grid id
+        private static tableIdSequence: number = 0;     //Used to auto-generate unique ids
+        /*[Readonly]*/ tableId: string;                 //Unique table id
        
 
         //Column properties:
@@ -35,13 +25,13 @@ module JsGrid {
         private rows: { [key: string]: Row; } = {};     //All rows, sorted by their id
  
         /*
-         * Generates and returns a new JsGrid Table     (note: if the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
+         * Generates and returns a new Tablify Table     (note: if the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
          * @identifier      string              JQuery-Selector. Is resolved to a JQuery element (see below)
-         *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the JsGrid is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+         *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
          * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
          */
         constructor(identifier: string|JQuery, description?: TableDescription|Table) {
-            this.gridId = "jsg" + (++Table.gridIdSequence);
+            this.tableId = "jsg" + (++Table.tableIdSequence);
             if (typeof identifier === "string") {
                 this.table = $(identifier);                     //selector
             } else {
@@ -57,14 +47,14 @@ module JsGrid {
                 var table = $("<table><thead></thead><tbody></tbody></table>");
                 this.table.append(table);
                 this.table = table;
-            } else if (this.table.hasClass("jsGrid")){          //Maybe the table has already been initialised with a jsGrid? If yes, return the already existing object and don't create a new one
+            } else if (this.table.hasClass("tablified")) {      //Maybe the table has already been initialised with Tablify? If yes, return the already existing object and don't create a new one
                 var existingObj = tableStore.getTableByElement(this.table);
                 if (existingObj !== null) {                     //The table is already managed by another Table-instance
-                    logger.warning("The given HTML element is already managed by another Table instance (\""+existingObj.gridId+"\"). The old instance will be returned instead of creating a new one.");
+                    logger.warning("The given HTML element is already managed by another Table instance (\""+existingObj.tableId+"\"). The old instance will be returned instead of creating a new one.");
                     return existingObj;
                 }
             }
-            this.table.addClass("jsGrid");
+            this.table.addClass("tablified");
             tableStore.registerTable(this);
 
             this.thead = this.table.find("thead");
@@ -100,11 +90,11 @@ module JsGrid {
         }
 
         /*
-         * Destroys the JsGrid Table. This object will get unusable and members as well as member functions must not be used afterwards.
+         * Destroys the Tablify Table. This object will get unusable and members as well as member functions must not be used afterwards.
          */
         destroy(): void {
             tableStore.unregisterTable(this);
-            this.table.removeClass("jsGrid");
+            this.table.removeClass("tablified");
             this.table = null;
         }
     
@@ -497,41 +487,41 @@ module JsGrid {
 
 
 window.onload = () => {
-    //new JsGrid.Table("#content>table");
-    var grid = new JsGrid.Table("#content");
+    //new Tablify.Table("#content>table");
+    var table = new Tablify.Table("#content");
 
-    grid.addColumn(/*"Column 1"*/);
-    grid.addColumn({
+    table.addColumn(/*"Column 1"*/);
+    table.addColumn({
         //columnId: "Column 2",
         defaultTitleContent: "2. Spalte",
         defaultBodyContent: "---"
     });
 
-    grid.addRow(JsGrid.RowType.title, "Title row");
+    table.addRow(Tablify.RowType.title, "Title row");
 
-    grid.addRow(JsGrid.RowType.body, {
+    table.addRow(Tablify.RowType.body, {
         //rowId: "First row",
         content: {
-            "jsc1": new JsGrid.Cell("First cell"),
+            "jsc1": new Tablify.Cell("First cell"),
             "jsc2": "Second cell"
         }
     });
 
-    grid.addRow(JsGrid.RowType.title, {
+    table.addRow(Tablify.RowType.title, {
         content: {
-            "jsc1": new JsGrid.Cell("column 1"),
+            "jsc1": new Tablify.Cell("column 1"),
             "jsc2": "column 2"
         }
     });
 
 
-    grid.addRow(JsGrid.RowType.body, {
+    table.addRow(Tablify.RowType.body, {
         //rowId: "Second row",
         content: {
             "jsc1": "!!!"
         }
     });/*
-    grid.addColumn({
+    table.addColumn({
         columnId: "Column 3",
         defaultTitleContent: "InvisibleTitle",
         defaultBodyContent: "<b>That's what I call a cell!</b>",
@@ -540,28 +530,28 @@ window.onload = () => {
             "Title row": "Title of Nr. 3"
         }
     });*/
-    grid.addRow(JsGrid.RowType.body);
-    grid.addRow(JsGrid.RowType.body);
-    grid.addRow(JsGrid.RowType.body);
-    grid.addRow(JsGrid.RowType.body);
-    grid.addRow(JsGrid.RowType.body);
+    table.addRow(Tablify.RowType.body);
+    table.addRow(Tablify.RowType.body);
+    table.addRow(Tablify.RowType.body);
+    table.addRow(Tablify.RowType.body);
+    table.addRow(Tablify.RowType.body);
 
 
 
 
-    //console.log(grid.toObject());
-    console.log(JSON.stringify(grid.toObject(true)));
+    //console.log(table.toObject());
+    console.log(JSON.stringify(table.toObject(true)));
 
 
-    new JsGrid.Table("#content", grid.toObject(true));
-    new JsGrid.Table("#content", grid.toObject(false));
+    new Tablify.Table("#content", table.toObject(true));
+    new Tablify.Table("#content", table.toObject(false));
 
-    //var copyTable = new JsGrid.Table(grid.table);
-    //console.log(copyTable === grid);
+    //var copyTable = new Tablify.Table(table.table);
+    //console.log(copyTable === table);
 
 
     console.log("===================================================");
-    new JsGrid.Table("#content", {
+    new Tablify.Table("#content", {
         "columns": [
         ],
         "rows": [

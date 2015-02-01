@@ -1,5 +1,7 @@
-﻿
-module JsGrid {
+﻿/// <reference path="Tablify.ts" />
+
+
+module Tablify {
     
 //Adding Elements to an existing Table:
 //***************************************************************************************************************

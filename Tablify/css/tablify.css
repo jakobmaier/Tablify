@@ -1,15 +1,13 @@
 ﻿
 
-/*table.jsGrid {
-    
-}*/
 
-.jsGrid td, .jsGrid th {
+
+.tablified td, .tablified th {
     border: 1px solid #C7C7C7;
     padding: 3px 5px;
 }
 
-.jsGrid th {
+.tablified th {
     background-color: #49483E;
 }
 

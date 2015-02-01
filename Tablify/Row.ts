@@ -1,6 +1,6 @@
-﻿/// <reference path="JsGrid.ts" />
+﻿/// <reference path="Tablify.ts" />
 
-module JsGrid {
+module Tablify {
 
     export class Row {
         private table: Table;                           //The table where this row belongs to
