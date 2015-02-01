@@ -1,6 +1,6 @@
 
 #Typescript-specific ignores:
-jsGrid/*.js
+Tablify/*.js
 
 
 ## Ignore Visual Studio temporary files, build results, and
