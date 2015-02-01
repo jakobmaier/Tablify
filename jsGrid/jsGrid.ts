@@ -10,87 +10,9 @@ Other libs:
     http://lorenzofox3.github.io/smart-table-website/
 */
 
-type Row = string;
 
 module JsGrid {
-    /*
-     * Contains all Tables, that are currently active on the web page.
-     */
-    class TableStore {
-        /*[Readonly]*/ tableList: Table[] = [];                 //List of all Tables that are available on the page. This list is neccessary in order to find/retrieve Table objects by an element selector
       
-        //Callback handlers:
-        onTableRegistered: (table: Table) => void = null;       //Is called everytime a new table is initialised
-        onTableUnregistered: (table: Table) => void = null;     //Is called everytime an existing table is destroyed
-
-
-
-        /*
-         * Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
-         * @table   JQuery      References an HTMLTableElement. If this HTMLTableElement is managed by an existing table object, the corresponding object is returned
-         * @return  Table       The Table-Object that manages the given HTTMLTableElement. If the Element isn't managed, null is being returned.
-         */
-        getTableByElement(table: JQuery): Table {
-            for (var i = 0; i < this.tableList.length; ++i) {
-                if (this.tableList[i].representsTable(table)) {
-                    return this.tableList[i];
-                }
-            }
-            return null;
-        }
-
-        /*
-         * Returns the Table-instance with a specific id. If the id does not exist, null is returned
-         * @gridId  string      gridId of the table, whose instance should be returned
-         * @return  Table       The Table-Object with the given gridId. If the id does not exist, null is being returned.
-         */
-        getTableById(gridId: string): Table {
-            assert_argumentsNotNull(arguments);
-            for (var i = 0; i < this.tableList.length; ++i) {
-                if (this.tableList[i].gridId === gridId) {
-                    return this.tableList[i];
-                }
-            }
-            return null;
-        }
-
-        /*
-         * [Internal]
-         * Adds a table to the internal list
-         */
-        registerTable(table: Table): void {
-            assert_argumentsNotNull(arguments);
-            this.tableList.push(table);
-            if (typeof this.onTableRegistered === "function") {
-                this.onTableRegistered(table);
-            }
-        }
-
-        /*
-         * [Internal]
-         * Removes a table from the internal list
-         */
-        unregisterTable(table: Table): void {
-            assert_argumentsNotNull(arguments);
-            for (var i = 0; i < this.tableList.length; ++i) {
-                if (this.tableList[i] === table) {
-                    this.tableList.splice(i, 1);
-                    if (typeof this.onTableUnregistered === "function") {
-                        this.onTableUnregistered(table);
-                    }
-                    return;
-                }
-            }
-            logger.error("Unregister table failed. No such table in the list.");
-        }
-    };
-    export var tableStore: TableStore = new TableStore();    //Singleton
-
-
-
-
-
-  
     export class Table {
         //References to commonly used HTML elements:
         /*[Readonly]*/ table: JQuery;   //<table>
@@ -178,17 +100,14 @@ module JsGrid {
         }
 
         /*
-         * Destroys the JsGrid Table. This object will get unusable.
+         * Destroys the JsGrid Table. This object will get unusable and members as well as member functions must not be used afterwards.
          */
         destroy(): void {
             tableStore.unregisterTable(this);
             this.table.removeClass("jsGrid");
             this.table = null;
-            this.rows = null;
-            this.columns = null;
         }
     
-
         /*
          * Adds a new column to the table.
          * @column      null / undefined            The columnId is generated automatically
@@ -233,8 +152,7 @@ module JsGrid {
                 }
             }
         }
-
-
+        
         /*
          * Adds a new row to the table
          * @rowType     RowType                 The type of the row (title, body, footer)
@@ -264,6 +182,77 @@ module JsGrid {
             }         
         }
 
+        /*
+        * Returns the position of a specific row within the table. (=index).
+        * The first title row has index 0. The first body row has index "titleRowCount".
+        * @identifier      string      The rowId. If the rowId doesn't existing within this table, null is being returned
+        *                  Row         Row Object. If the row is not part of this table, null is being returned.
+        * @return          number      Returns the index/position of the given row. If the row couldn't be found, null is returned.
+        */
+        getRowIndex(identifier: string|Row): number {
+            //Todo: possible performance improvement: store the index within the Row object.
+            var row: Row;
+            if (typeof identifier === "string") {
+                row = this.rows[identifier];    
+                if (!row) {     //The rowId does not exist
+                    return null;
+                }
+            } else {
+                row = identifier;
+            }
+            for (var i = 0; i < this.titleRows.length; ++i) {
+                if (this.titleRows[i].equals(row)) {
+                    return i;
+                }
+            }
+            for (var i = 0; i < this.bodyRows.length; ++i) {
+                if (this.bodyRows[i].equals(row)) {
+                    return this.titleRows.length + i;
+                }
+            }
+            return null;
+        }
+        
+        /*
+         * Returns the position of a specific column within the table. (=index).
+         * The first (=left) column has index 0.
+         * @identifier      string      The columnId. If the columnId doesn't existing within this table, null is being returned
+         *                  Column      Column Object. If the column is not part of this table, null is being returned.
+         * @return          number      Returns the index/position of the given column. If the column couldn't be found, null is returned.
+         */
+        getColumnIndex(identifier: string|Column): number {
+            //Todo: possible performance improvement: store the index within the Column object.
+            var column: Column;
+            if (typeof identifier === "string") {
+                column = this.columns[identifier];
+                if (!column) {     //The columnId does not exist
+                    return null;
+                }
+            } else {
+                column = identifier;
+            }
+            for (var i = 0; i < this.sortedColumns.length; ++i) {
+                if (this.sortedColumns[i].equals(column)) {
+                    return i;
+                }
+            }
+            return null;
+        }
+
+        /*
+         * Returns all rows within the table or table section (title/body).
+         * @rowType     RowType     optional; If no value is given, all rows are returned. If "RowType.title" is given, only the title rows are returned. If "RowType.body" is given, the body rows are returned.
+         * @return      Row[]       All rows within the table or table section (title/body). The order conforms to the output order.
+         */
+        getRows(rowType?: RowType): Row[]{
+            if (rowType === RowType.title) {
+                return this.titleRows;
+            }
+            if (rowType === RowType.body) {
+                return this.bodyRows;
+            }
+            return this.titleRows.concat(this.bodyRows);
+        }
 
         /*
          * Returns the required row. A row contains all cells.
@@ -275,13 +264,119 @@ module JsGrid {
         getRow(identifier: string|number): Row {
             if (typeof identifier === "number") {
                 if (identifier < this.titleRows.length) {                   //A titleRow should be returned
-                    return this.titleRows[identifier];
+                    return this.titleRows[identifier] || null;
                 }
                 return this.bodyRows[identifier - this.titleRows.length] || null;  //A bodyRow should be returned
             }
             return this.rows[<string>identifier] || null;
         }
+        
+        /*
+         * Removes the specified row.
+         * @identifier      string          Removes the row with the given rowId. If the id doesn't exist, false is returned
+         *                  number          Removes the row with the specified index. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, false is being returned.
+         *                  Row             Removes the given row from the table. If the row is not part of this table, null is being returned.
+         *                                  Note that passing numbers as strings (eg. removeRow("4");) will be interpreted as a rowId, rather than an index.
+         * @return          boolean         Returns true, if the row has been removed successfully. Returns false, if the specified row hasn't been found.
+         */
+        removeRow(identifier: string|number|Row): boolean {
+            //The following two informations are needed in order to remove a column:
+            var rowId: string;
+            var rowIndex: number;
 
+            if (typeof identifier === "number") {
+                rowIndex = identifier;
+                if (identifier < this.titleRows.length) {   //A titleRow should be removed
+                    var row = this.titleRows[identifier];
+                    if (!row) {             //Index out of bounds (this check is needed in case of negative or float values)
+                        return false;
+                    }
+                    rowId = row.rowId;
+                } else {
+                    var row = this.bodyRows[identifier - this.titleRows.length];
+                    if (!row) {             //Index out of bounds
+                        return false;
+                    }
+                    rowId = row.rowId;
+                }
+            } else if(typeof identifier === "string") {    //the rowId is given
+                rowId = identifier;
+                rowIndex = this.getRowIndex(rowId);
+                if (rowIndex === null) {    //rowId does not exist
+                    return false;
+                }
+            } else {                        //a Row has been given
+                rowId = identifier.rowId;
+                rowIndex = this.getRowIndex(identifier);
+                if (rowIndex === null) {    //the row is not part of this table
+                    return false;
+                }
+            }
+            
+            this.rows[rowId].element.remove();  //Remove the row from the DOM
+            this.rows[rowId].destroy();         //The row is not part of the table anymore -> make it unusable
+            delete this.rows[rowId];
+            if (rowIndex < this.titleRows.length) {
+                this.titleRows.splice(rowIndex, 1);
+            } else {
+                this.bodyRows.splice(rowIndex - this.titleRows.length, 1);
+            }
+            return true;
+        }
+
+        /*
+         * Removes the specified column.
+         * @identifier      string          Removes the column with the given columnId. If the id doesn't exist, false is returned
+         *                  number          Removes the column with the specified index. The first (left) column has index 0. If the index is out of bounds, false is being returned.
+         *                  Column          Removes the given column from the table. If the column is not part of this table, null is being returned.
+         *                                  Note that passing numbers as strings (eg. removeColumn("4");) will be interpreted as a columnId, rather than an index.
+         * @return          boolean         Returns true, if the column has been removed successfully. Returns false, if the specified column hasn't been found.
+         */
+        removeColumn(identifier: string|number|Column): boolean {
+            //The following two informations are needed in order to remove a column:
+            var columnId: string;
+            var columnIndex: number;
+
+            if (typeof identifier === "number") {
+                columnIndex = identifier;
+                var column = this.sortedColumns[identifier];
+                if (!column) {                  //Index out of bounds
+                    return false;
+                }
+                columnId = column.columnId;               
+            } else if (typeof identifier === "string") {    //the columnId is given
+                columnId = identifier;
+                columnIndex = this.getColumnIndex(columnId);
+                if (columnIndex === null) {     //columnId does not exist
+                    return false;
+                }
+            } else {                            //a Column has been given
+                columnId = identifier.columnId;
+                columnIndex = this.getColumnIndex(identifier);
+                if (columnIndex === null) {     //the column is not part of this table
+                    return false;
+                }
+            }
+
+            for (var rowId in this.rows) {      //Remove the column from the DOM
+                this.rows[rowId].removeColumn(columnId);
+            }
+            this.columns[columnId].destroy();   //The column is not part of the table anymore -> make it unusable
+            delete this.columns[columnId];
+            this.sortedColumns.splice(columnIndex, 1);
+            return true;
+        }
+
+
+
+
+        /*
+         * Returns all columns within the table.
+         * @return      Column[]        All columns within the table. The order conforms to the output order.
+         */
+        getColumns(): Column[] {
+            return this.sortedColumns;
+        }
 
         /*
          * Returns the required column. The column does not contains cells.
@@ -315,7 +410,6 @@ module JsGrid {
             return cells;
         }
         
-
         /*
          * Returns the specified cell.
          * @rowIdentifier       string          Specifies the rowId of the cell. If the row doesn't exist, null is returned
@@ -356,8 +450,7 @@ module JsGrid {
         getColumnCount(): number {
             return this.sortedColumns.length;
         }
-
-        
+                
         /*
          * Converts the Table into an object. Used for serialisation.
          * Performs a deepCopy.

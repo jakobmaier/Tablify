@@ -29,9 +29,19 @@ Table (Manages exacly one HTMLTableElement)
 
     representsTable         (table: JQuery): boolean                                                // Returns true, if the object represents the given table-element
     destroy                 (): void                                                                // Destroys the JsGrid Table. This object will get unusable.
+
     addColumn               (columnDef?: ColumnDefinition|ColumnDescription): void                  // Adds a new column to the table.
     addRow                  (rowType: RowType, rowDef?: RowDefinition|RowDescription): void         // Adds a new row to the table
+
+    getRowIndex             (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
+    getColumnIndex          (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
+
+    removeRow               (identifier: string|number|Row): boolean                                // Removes the specified row.
+    removeColumn            (identifier: string|number|Column): boolean                             // Removes the specified column.
+
+    getRows                 (rowType?: RowType): Row[]                                              // Returns all rows within the table or table section (title/body)
     getRow                  (identifier: string|number): Row                                        // Returns the required row. A row contains all cells.
+    getColumns              (): Column[]                                                            // Returns all columns within the table.
     getColumn               (identifier: string|number): Column                                     // Returns the required column. The column does not contains cells.
     getColumnCells          (identifier: string|number): { [key: string]: Cell; }                   // Returns all cells of a sepcific column.
     getCell                 (rowIdentifier: string|number, columnIdentifier: string|number): Cell   // Returns the specified cell.
@@ -47,12 +57,13 @@ Row (Manages exacly one row within a Table)
     rowId                   readonly string;                                                        // internal id, unique within the table
     rowType                 readonly RowType;                                                       // title- / body- / footer- row
 
+    remove                  (): void                                                                // Removes the row from its table.
+    equals                  (other: Row): boolean                                                   // Checks if the given row is the same as this row.
+
     getCell                 (column: string|number): Cell                                           // Returns the cell of a sepcific column.
+    getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this row
 
     toObject                (includeContent?: boolean): RowDescription                              // Converts the Row into an object. Used for serialisation.
-
-
-
 
 
 Column (Contains basic column Information, similar to a plain datatype)
@@ -61,7 +72,14 @@ Column (Contains basic column Information, similar to a plain datatype)
     defaultTitleContent     Cell                                                                    // Is used for rendering title cells that have no content
     defaultBodyContent      Cell                                                                    // Is used for rendering body cells that have no content
 
+    remove                  (): void                                                                // Removes the column from its table.
+    equals                  (other: Column): boolean                                                // Checks if the given column is the same as this column.
+
+    getCell                 (row: string|number): Cell                                              // Returns the cell of a sepcific row.
+    getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this column
+
     toObject                (): ColumnDescription                                                   // Converts the Column into an object. Used for serialisation.
+
 
 Cell
 ***********************************************************

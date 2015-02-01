@@ -56,6 +56,32 @@ module JsGrid {
             }
         }
 
+        /*
+         * [Internal]
+         * Destroys the ´Column. This object will get unusable and members as well as member functions must not be used afterwards.
+         * Note that this function does not remove the column from the DOM.
+         */
+        destroy() {
+            logger.info("Deleting column \"" + this.columnId + "\".");
+            this.table = null;
+        }
+
+        /*
+         * Removes the column from its table.
+         */
+        remove(): void {
+            assert(this.table.removeColumn(this));
+        }
+
+        /*
+         * Checks if the given column is the same as this column.
+         * In order to match, the columns must be part of the same table and must have the same columnId (unique per table). Having the same data/cells is not a sufficient match.
+         * @other       Column      The column that should be checked for equality
+         * @return      boolean     Returns true, if the columns are identical. Returns false otherwise.
+         */
+        equals(other: Column): boolean {
+            return (other.table === this.table && other.columnId === this.columnId);
+        }
 
         /*
          * Returns the cell of a sepcific row.
@@ -68,7 +94,14 @@ module JsGrid {
             return this.table.getCell(row, this.columnId);
         }
 
-
+        /*
+         * Returns all cells of this column
+         * @return       { [key: string]: Cell; }    A list with all cells that are present within the column. The index represents the rowId.
+        */
+        getCells(): { [key: string]: Cell; } {
+            return this.table.getColumnCells(this.columnId);
+        }
+        
         /*
          * Converts the Column into an object. Used for serialisation.
          * Performs a deepCopy.

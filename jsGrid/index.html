@@ -11,6 +11,7 @@
     <script src="Debugging.js"></script>
     <script src="TypeDefinitions.js"></script>
     <script src="jsGrid.js"></script>
+    <script src="TableStore.js"></script>
     <script src="Column.js"></script>
     <script src="Cell.js"></script>
     <script src="Row.js"></script>
@@ -27,7 +28,7 @@
                 alert("Invalid JSON\n" + e.message);
                 return;
             }            
-            window.t = new JsGrid.Table("#content", obj);
+            new JsGrid.Table("#content", obj);
         }
 
         /*
@@ -35,9 +36,13 @@
          */
         $(document).ready(function () {
             JsGrid.tableStore.onTableRegistered = function (table) {
+                window.t = table;
                 updateTableList();
             };
             JsGrid.tableStore.onTableUnregistered = function (table) {
+                if (window.t.gridId === table.gridId) {
+                    delete window.t;
+                }
                 updateTableList();
             };
             updateTableList();    

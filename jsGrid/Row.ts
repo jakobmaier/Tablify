@@ -5,7 +5,7 @@ module JsGrid {
     export class Row {
         private table: Table;                           //The table where this row belongs to
 
-        private element: JQuery = null;                 //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
+        /*[Readonly]*/ element: JQuery = null;          //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
         
         private static rowIdSequence: number = 0;       //Used to auto-generate unique ids, if the user didn't pass an Id (note that this sequence produces globally unique ids)
         /*[Readonly]*/ rowId: string;                   //internal id, unique within the table
@@ -77,7 +77,35 @@ module JsGrid {
 
         /*
          * [Internal]
-         * Adds a new column to the row. Is called everytime a column is added to the table.
+         * Destroys the Row. This object will get unusable and members as well as member functions must not be used afterwards.
+         * Note that this function does not remove the row from the DOM.
+         */
+        destroy(): void {
+            logger.info("Deleting row \"" + this.rowId + "\".");
+            this.table = null;
+            this.element = null;
+        }
+        
+        /*
+         * Removes the row from its table.
+         */
+        remove(): void {
+            assert(this.table.removeRow(this));
+        }
+        
+        /*
+         * Checks if the given row is the same as this row.
+         * In order to match, the rows must be part of the same table and must have the same rowId (unique per table). Having the same data/cells is not a sufficient match.
+         * @other       Row         The row that should be checked for equality
+         * @return      boolean     Returns true, if the rows are identical. Returns false otherwise.
+         */
+        equals(other: Row): boolean {
+            return (other.table === this.table && other.rowId === this.rowId);
+        }
+
+        /*
+         * [Internal]
+         * Adds a new column (=cell) to the row. Is called everytime a column is added to the table.
          * @column    Column            Information about the new Column
          * @content   CellDefinition    The cell that should be assigned to the new column. A new copy of this parameter is generated.
          */
@@ -100,6 +128,24 @@ module JsGrid {
             }
         }
 
+        /*
+         * [Internal]
+         * Removes a column (=cell) from the Row. Is called everytime a column is removed from the table.
+         * This function also removes the cell from the DOM.
+         * @columnId    string          Id of the column, whose cell should be removed
+         */
+        removeColumn(columnId: string): void {
+            this.cells[columnId].element.remove();
+            delete this.cells[columnId];
+        }
+        
+        /*
+        * Returns all cells of this row
+        * @return       { [key: string]: Cell; }    A list with all cells that are present within the row. The index represents the columnId.
+        */
+        getCells(): { [key: string]: Cell; } {
+            return this.cells;
+        }
 
         /*
          * Returns the cell of a sepcific column.
@@ -118,8 +164,7 @@ module JsGrid {
             }
             return this.cells[<string>column] || null;
         }
-        
-                
+                        
         /*
          * [Internal]
          * Returns a JQuery->HTMLElement, representing the Row (including all cells). This element can be attached to the DOM.
@@ -140,9 +185,7 @@ module JsGrid {
             this.element = element;
             return element;
         }
-
-
-        
+                
         /*
          * Converts the Row into an object. Used for serialisation.
          * Performs a deepCopy.

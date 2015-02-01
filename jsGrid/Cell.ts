@@ -4,7 +4,7 @@ module JsGrid {
 
     export class Cell {
 
-        private element: JQuery = null;         //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
+        /*[Readonly]*/ element: JQuery = null;  //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
 
         /*[Readonly]*/ content: string;         //content of the cell. Might contain HTML.
 
@@ -51,7 +51,6 @@ module JsGrid {
             return this.element;
         }
         
-
         /*
          * Converts the Cell into an object. Used for serialisation.
          * Performs a deepCopy.
