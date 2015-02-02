@@ -124,7 +124,6 @@ module Tablify {
             if (this.element !== null) {
                 var cellDom: JQuery = cell.generateDom(this.rowType === RowType.title ? "th" : "td", columnId);
                 this.element.append(cellDom); 
-                console.log("row " + this.rowId + " / " + columnId + " = "+ cell.content);
             } else {
                 //With the current source code layout, this shouldn't happen - rows are inserted into the DOM as soon as they're attached to the table
                 logger.warning("A column has been added to the row \"" + this.rowId + "\" and the row is not part of the DOM yet. This might be an error.");

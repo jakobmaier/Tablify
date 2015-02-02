@@ -72,12 +72,4 @@ module Tablify {
 
 
 
-
-
-
-
-
-
-
-
 } 
