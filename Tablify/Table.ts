@@ -5,9 +5,9 @@ module Tablify {
       
     export class Table {
         //References to commonly used HTML elements:
-        /*[Readonly]*/ table: JQuery;   //<table>
-        private thead: JQuery;          //<thead>
-        private tbody: JQuery;          //<tbody>
+        /*[Readonly]*/ table: JQuery = null;    //<table>
+        private thead: JQuery;                  //<thead>
+        private tbody: JQuery;                  //<tbody>
 
     
         private static tableIdSequence: number = 0;     //Used to auto-generate unique ids
@@ -24,36 +24,70 @@ module Tablify {
         private bodyRows: Row[] = [];                   //Rows, containing the data. Sorted by their output order.
         private rows: { [key: string]: Row; } = {};     //All rows, sorted by their id
  
-        /*
-         * Generates and returns a new Tablify Table     (note: if the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
-         * @identifier      string              JQuery-Selector. Is resolved to a JQuery element (see below)
-         *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
-         * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
-         */
-        constructor(identifier: string|JQuery, description?: TableDescription|Table) {
-            this.tableId = "jsg" + (++Table.tableIdSequence);
-            if (typeof identifier === "string") {
-                this.table = $(identifier);                     //selector
-            } else {
-                this.table = identifier;                        //jQuery
-            }
-            if (this.table == null) {                           //No table found                
-                logger.error("Unable to find DOM Element", identifier);
-                return;
-            }
 
-            if (this.table.prop("tagName") !== "TABLE") {       //Create a new table within this element
-                logger.log("Creating table element. Parent tag: ", this.table.prop("tagName"));
-                var table = $("<table><thead></thead><tbody></tbody></table>");
-                this.table.append(table);
-                this.table = table;
-            } else if (this.table.hasClass("tablified")) {      //Maybe the table has already been initialised with Tablify? If yes, return the already existing object and don't create a new one
-                var existingObj = tableStore.getTableByElement(this.table);
-                if (existingObj !== null) {                     //The table is already managed by another Table-instance
-                    logger.warning("The given HTML element is already managed by another Table instance (\""+existingObj.tableId+"\"). The old instance will be returned instead of creating a new one.");
-                    return existingObj;
+        
+        
+        /*
+         * Generates and returns a new Tablify Table     (Note: If the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
+         * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
+         * @target          string              JQuery-Selector. Is resolved to a JQuery element (see below)
+         *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+         *                  Element             Target element. Is converted to a JQuery element (see above)
+         * Note: If no target is passed, the table won't be appended to the DOM.
+         * Note: Both parameters are optional. It is also possible to ommit the first parameter and only pass the target.
+         */
+        constructor(target?: string|JQuery|Element);
+        constructor(description: TableDescription|Table, target?: string|JQuery|Element);
+        constructor(description?: TableDescription|Table|(string|JQuery|Element), target?: string|JQuery|Element) {
+            this.tableId = "jsg" + (++Table.tableIdSequence);
+
+            if (typeof description === "string" || (description instanceof jQuery)) {
+                if (arguments.length !== 1) {
+                    logger.error("Invalid usage. The first parameter needs to be a TableDescription, while the second parameter is a target. Both parameters can be ommited, but their order can't be interchanged.");
+                    return;
                 }
+                target = <string|JQuery>description;
+                description = null;
             }
+            
+            if (!target) {                                  //No target provided -> don't attach to DOM
+                logger.log("Creating detached table element.");
+                this.table = $("<table><thead></thead><tbody></tbody></table>");
+            } else {
+            //Find the selected element:
+                if (typeof target === "string") {           //selector
+                    this.table = $(target);             
+                    if (this.table.length !== 1) {
+                        logger.error("Unable to find unique DOM Element with the following selector: \"" + target + "\"");
+                        this.table = null;
+                        return;
+                    }
+                } else if (this.table instanceof jQuery) {  //JQuery
+                    this.table = <JQuery>target;
+                }  else {                                   //Element
+                    this.table = $(target);
+                } 
+            //Check if the selected element can be used: 
+                if (this.table.prop("tagName") !== "TABLE") {       //Create a new table within this element
+                    logger.log("Appending table element. Parent tag: ", this.table.prop("tagName"));
+                    var table = $("<table><thead></thead><tbody></tbody></table>");
+                    this.table.append(table);
+                    this.table = table;
+                } else {
+                    if (this.table.hasClass("tablified")) {         //Maybe the table has already been initialised with Tablify? If yes, return the already existing object and don't create a new one
+                        var existingObj = tableStore.getTableByElement(this.table);     //expensive operation
+                        if (existingObj !== null) {                 //The table is already managed by another Table-instance
+                            logger.warning("The given HTML element is already managed by another Table instance (\"" + existingObj.tableId + "\"). The existing instance will be returned instead of creating a new one.");
+                            return existingObj;
+                        }
+                    }
+                    //Todo: Read the existing html-table and manage it
+                    logger.error("Not implemented yet: Tablify is currently not able to read existing HTML tables and mange them. Tables have to be created completely using Tablify.");
+                    this.table = null;
+                    return;
+                }
+            }                                  
+            
             this.table.addClass("tablified");
             this.table.attr("data-tableId", this.tableId);
             tableStore.registerTable(this);
@@ -66,7 +100,7 @@ module Tablify {
             }
         //Generate the table content:
             var descriptionObj: TableDescription;
-            if (description instanceof Table) {
+            if (<TableDescription|Table>description instanceof Table) {
                 descriptionObj = (<Table>description).toObject(true);
             } else {
                 descriptionObj = <TableDescription>description;
@@ -100,6 +134,24 @@ module Tablify {
             this.table = null;
         }
     
+        /*
+         * Returns true, if the table is part of the DOM
+         * @return      boolean         true: The table is part of the DOM; false: the table is detached and not part of the DOM.
+         */
+        isPartOfDOM(): boolean {
+            return jQuery.contains(<any>document, <any>this.table.get(0));
+        }
+
+        /*
+         * Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
+         * @target      string      jQuery selector defining the target Element
+         *              JQuery      JQuery element referencing the target Element
+         *              Element     target element
+         */
+        appendTo(target: string|JQuery|Element): void {
+            this.table.appendTo(<any>target);       //cast is needed due to the use of an outdated TypeScript version within the jQuery definition
+        }
+        
         /*
          * Adds a new column to the table.
          * @column      null / undefined            The columnId is generated automatically
@@ -485,170 +537,4 @@ module Tablify {
 
 
 
-
-
-
-window.onload = () => {
-    //new Tablify.Table("#content>table");
-    //var table = new Tablify.Table("#content");
-
-    //table.addColumn(/*"Column 1"*/);
-    //table.addColumn({
-    //    //columnId: "Column 2",
-    //    defaultTitleContent: "2. Spalte",
-    //    defaultBodyContent: "---"
-    //});
-
-    //table.addRow(Tablify.RowType.title, "Title row");
-
-    //table.addRow(Tablify.RowType.body, {
-    //    //rowId: "First row",
-    //    content: {
-    //        "jsc1": new Tablify.Cell("First cell"),
-    //        "jsc2": "Second cell"
-    //    }
-    //});
-
-    //table.addRow(Tablify.RowType.title, {
-    //    content: {
-    //        "jsc1": new Tablify.Cell("column 1"),
-    //        "jsc2": "column 2"
-    //    }
-    //});
-
-
-    //table.addRow(Tablify.RowType.body, {
-    //    //rowId: "Second row",
-    //    content: {
-    //        "jsc1": "!!!"
-    //    }
-    //});/*
-    //table.addColumn({
-    //    columnId: "Column 3",
-    //    defaultTitleContent: "InvisibleTitle",
-    //    defaultBodyContent: "<b>That's what I call a cell!</b>",
-    //    content: {
-    //        "jsr1": "3x1",
-    //        "Title row": "Title of Nr. 3"
-    //    }
-    //});*/
-    //table.addRow(Tablify.RowType.body);
-    //table.addRow(Tablify.RowType.body);
-    //table.addRow(Tablify.RowType.body);
-    //table.addRow(Tablify.RowType.body);
-    //table.addRow(Tablify.RowType.body);
-
-
-
-
-    ////console.log(table.toObject());
-    //console.log(JSON.stringify(table.toObject(true)));
-
-
-    //new Tablify.Table("#content", table.toObject(true));
-    //new Tablify.Table("#content", table.toObject(false));
-
-    ////var copyTable = new Tablify.Table(table.table);
-    ////console.log(copyTable === table);
-
-
-    //console.log("===================================================");
-    //new Tablify.Table("#content", {
-    //    "columns": [
-    //    ],
-    //    "rows": [
-    //        {
-    //            "rowId": "row1",
-    //            "content": {
-    //                "col1": "cell1",
-    //                "col2": "cell x"
-    //            },
-    //            "generateMissingColumns": true
-    //        },
-    //        {
-    //            "rowId": "row2", 
-    //            "content": {
-    //                "col1": "cell2",
-    //                "col2": "cell x"
-    //            },
-    //            "generateMissingColumns": true
-    //        }
-    //    ],
-    //    "titleRowCount": 0
-    //});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    var obj = {
-        "A": "a",
-        "B": "b",
-        "C": "c",
-        "D": "d",
-        "E": "e",
-        "F": "f",
-        "G": "g"
-    };
-    var arr = ["a", "b", "c", "d", "e", "f", "g"];
-    var str = "A string";
-    var num = 42.5;
-
-    var arrArr = [arr, arr, arr, arr];
-    var arrObj = [obj, obj, obj, obj];
-    var objArr = { "A": arr, "B": arr, "C": arr, "D": arr };
-    var objObj = { "A": obj, "B": obj, "C": obj, "D": obj };
-
-
-
-    
-
-
-
-    console.log("Tablifying...");
-    var contentToTablify = [
-        obj,
-        arr,
-        str,
-        num,
-        arrArr,
-        arrObj,
-        objArr,
-        objObj
-    ];
-
-
-
-
-    for (var i = 0; i < contentToTablify.length; ++i) {
-        try {
-            (<any>contentToTablify[i]).tablify("#content");
-        } catch(e) {
-            console.log("no tablify for", contentToTablify[i]);
-
-            Tablify.tablify(contentToTablify[i], "#content");
-        }
-    }
-
-    var array = ["a", "b", "c", "d", "e", "f", "g"];
-    var object = { first: array, second: array, third: array };
-    [object, object, object, object].tablify("#content");
-};
 

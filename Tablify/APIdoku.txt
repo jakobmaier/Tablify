@@ -25,10 +25,14 @@ Table (Manages exacly one HTMLTableElement)
     table                   readonly JQuery                                                         // References the HTML table element
     tableId                  readonly string;                                                       // Unique table id
 
-    constructor             (identifier: string|JQuery, description?: TableDescription|Table)       //Creates a new Table / manages a HTMLTableElement
+    constructor             (identifier?: string|JQuery|Element)                                    // Creates a new Table / manages a HTMLTableElement
+    constructor             (description: TableDescription|Table, identifier?: string|JQuery|Element)       // Creates a new Table / manages a HTMLTableElement
 
     representsTable         (table: JQuery): boolean                                                // Returns true, if the object represents the given table-element
     destroy                 (): void                                                                // Destroys the Tablify Table. This object will get unusable.
+
+    isPartOfDOM             (): boolean                                                             // Returns true, if the table is part of the DOM
+    appendTo                (target: string|JQuery|Element): void                                   // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
     addColumn               (columnDef?: ColumnDefinition|ColumnDescription): void                  // Adds a new column to the table.
     addRow                  (rowType: RowType, rowDef?: RowDefinition|RowDescription): void         // Adds a new row to the table
@@ -90,6 +94,12 @@ Cell
 
 
 
+Tablify (module)
+***********************************************************
+    tableStore              TableStore                                                                      // singleton instance
+    tablify                 (object: Object|Array<any>|any, identifier?: string|JQuery|Element): Table      // converts any object into a Table
+
+    Array.tablify           (target?: string|JQuery|Element): Tablify.Table                                 // shortcut for Tablify.tablify(theArray, target)
 
 
 

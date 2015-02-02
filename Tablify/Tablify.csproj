@@ -25,6 +25,7 @@
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
+    <TypeScriptCompile Include="index.ts" />
     <TypeScriptCompile Include="TableStore.ts" />
     <TypeScriptCompile Include="Tablify.ts" />
     <TypeScriptCompile Include="TypeDefinitions.ts" />

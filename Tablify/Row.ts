@@ -151,10 +151,10 @@ module Tablify {
 
         /*
          * Returns the cell of a sepcific column.
-         * @identifier      string                      Returns the cell of the column with the given columnId. If the column doesn't exist, null is returned
-         *                  number                      Returns the cell of the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
-         *                                              Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a columnId, rather than an index.
-         * @return          Cell                        The cell of the given column. If the column does not exist, null is being returned.
+         * @column      string      Returns the cell of the column with the given columnId. If the column doesn't exist, null is returned
+         *              number      Returns the cell of the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
+         *                          Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a columnId, rather than an index.
+         * @return      Cell        The cell of the given column. If the column does not exist, null is being returned.
          */
         getCell(column: string|number): Cell {
             if (typeof column === "number") {           //Get the column with that index

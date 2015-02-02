@@ -20,18 +20,19 @@ module Tablify {
      *              any         Any other type (string, number, function,...) will result in a table containing 2 cells: The first (top/title) cell contains the type ("typeof object"), the second (bottom/body) cell contains the result of "object.toString()"
      * @identifier  string      JQuery-Selector. Is resolved to a JQuery element (see below)
      *              JQuery      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+     *              Element     Target element. Is converted to a JQuery element (see above)
      * @return      Table       Returns the generated Table instance.
      * Note: If an array or object is passed and one of it's fields is another array/object, tablify is called recursive, leading in nested tables. The return value represents the top table.
      */
-    export function tablify(object: Object|Array<any>|any, identifier: string|JQuery): Table {        
+    export function tablify(object: Object|Array<any>|any, identifier?: string|JQuery|Element): Table {        
 
         if (object instanceof Array) {
-            var table = new Table(identifier, {
+            var table = new Table({
                 columns: [],                        //todo: improve syntax
                 rows: [ { rowId: "index" },
                         { rowId: "value" } ],       //todo: improve syntax
                 titleRowCount: 1
-            });
+            }, identifier);
             for (var i = 0; i < object.length; ++i) {
                 var index: string = i.toString();
                 var value: string = object[i].toString();
@@ -49,12 +50,12 @@ module Tablify {
         }
         
         if (typeof object === "object") {
-            var table = new Table(identifier, {
+            var table = new Table({
                 columns: [],                        //todo: improve syntax
                 rows: [ { rowId: "key"   },
                         { rowId: "value" } ],       //todo: improve syntax
                 titleRowCount: 1
-            });
+            }, identifier);
 
             for (var key in object) {
                 if (!object.hasOwnProperty(key)) {
@@ -77,7 +78,7 @@ module Tablify {
         }
 
         //Convert any other type into a table:
-        var table = new Table(identifier);
+        var table = new Table(null, identifier);
         table.addRow(RowType.title, "type");
         table.addRow(RowType.body,  "value");
         table.addColumn({
@@ -93,10 +94,10 @@ module Tablify {
 
 //Add a "tablify" function to all Arrays:
 interface Array<T> {        //Needed to tell TypeScript that there's a new property
-    tablify(identifier: string|JQuery): Tablify.Table;
+    tablify(target?: string|JQuery|Element): Tablify.Table;
 }
-Array.prototype.tablify = function (identifier: string|JQuery): Tablify.Table {
-    return Tablify.tablify(this, identifier);    
+Array.prototype.tablify = function (target?: string|JQuery|Element): Tablify.Table {
+    return Tablify.tablify(this, target);    
 }
 
 
