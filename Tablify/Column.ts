@@ -1,7 +1,7 @@
 ﻿/// <reference path="Tablify.ts" />
 
-
 module Tablify {
+    "use strict";
 
     export class Column {
         private table: Table;                           //The table where this column belongs to  

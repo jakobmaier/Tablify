@@ -1,7 +1,7 @@
 ﻿/// <reference path="Tablify.ts" />
 
-
 module Tablify {
+    "use strict";
       
     export class Table {
         //References to commonly used HTML elements:

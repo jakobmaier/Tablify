@@ -1,12 +1,9 @@
 ﻿/// <reference path="Tablify.ts" />
 
-
 //Todo: merge with the Fave-Logger to add additional functionality
 
 module Tablify {
-
-    //export var inputValidation: boolean = true;     //For debugging purposes only: If true, input parameters are better validated and log messages will be generated
-
+    "use strict";
 
     interface ILogger {
         log(...args: any[]): void;

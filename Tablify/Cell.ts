@@ -1,6 +1,7 @@
 ﻿ /// <reference path="Tablify.ts" />
 
 module Tablify {
+    "use strict";
 
     export class Cell {
 

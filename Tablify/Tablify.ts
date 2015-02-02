@@ -2,7 +2,6 @@
 /// <reference path="Debugging.ts" />
 /// <reference path="TypeDefinitions.ts" />
 
-
 /*
 Other libs:
     http://webix.com/demo/datatable/
@@ -10,8 +9,8 @@ Other libs:
     http://lorenzofox3.github.io/smart-table-website/
 */
 
-
 module Tablify {
+    "use strict";
 
     /*
      * Converts any Array or Object into a Table. Recursion is possible.

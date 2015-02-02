@@ -1,6 +1,8 @@
 ﻿
 
 window.onload = () => {
+    "use strict";
+
     //new Tablify.Table("#content>table");
     var table = new Tablify.Table("#content");
 

@@ -1,7 +1,7 @@
 ﻿/// <reference path="Tablify.ts" />
 
-
 module Tablify {
+    "use strict";
 
     /*
      * Contains all Tables, that are currently active on the web page.

@@ -1,7 +1,7 @@
 ﻿/// <reference path="Tablify.ts" />
 
-
 module Tablify {
+    "use strict";
     
 //Adding Elements to an existing Table:
 //***************************************************************************************************************

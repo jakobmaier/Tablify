@@ -1,6 +1,7 @@
 ﻿/// <reference path="Tablify.ts" />
 
 module Tablify {
+    "use strict";
 
     export class Row {
         private table: Table;                           //The table where this row belongs to
