@@ -17,10 +17,10 @@ module Tablify {
 
         /*
          * Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
-         * @table   JQuery      References an HTMLTableElement. If this HTMLTableElement is managed by an existing table object, the corresponding object is returned
-         * @return  Table       The Table-Object that manages the given HTTMLTableElement. If the Element isn't managed, null is being returned.
+         * @table   Selector        If the referenced HTMLElement is managed by an existing table object, the corresponding object is returned
+         * @return  Table           The Table-Object that manages the given HTTMLTableElement. If the Element isn't managed, null is being returned.
          */
-        getTableByElement(table: JQuery): Table {
+        getTableByElement(table: Selector): Table {
             for (var i = 0; i < this.tableList.length; ++i) {
                 if (this.tableList[i].representsTable(table)) {
                     return this.tableList[i];
@@ -31,8 +31,8 @@ module Tablify {
 
         /*
          * Returns the Table-instance with a specific id. If the id does not exist, null is returned
-         * @tableId  string     tableId of the table, whose instance should be returned
-         * @return  Table       The Table-Object with the given tableId. If the id does not exist, null is being returned.
+         * @tableId     string      tableId of the table, whose instance should be returned
+         * @return      Table       The Table-Object with the given tableId. If the id does not exist, null is being returned.
          */
         getTableById(tableId: string): Table {
             assert_argumentsNotNull(arguments);
@@ -42,6 +42,20 @@ module Tablify {
                 }
             }
             return null;
+        }
+
+        /*
+         * Returns the requested Table instance.
+         * @tableId     string      First tries to return the table with the given tableId. If there is no such table, the string will be interpreted as a jQuery selector
+         *              Selector    If the referenced HTMLElement is managed by an existing table object, the corresponding object is returned
+         * @return      Table       The Table-Object with the given tableId. If the id does not exist, null is being returned.
+         * Note: Using "getTableByElement" and "getTableById()" might be slightly more efficient
+         */
+        getTable(table: string|Selector): Table {
+            if (typeof table === "string") {        //First try to interpret it as a tableId, then interpret it as a selector
+                return this.getTableById(table) || this.getTableByElement(table);                
+            }
+            return this.getTableByElement(table);   //JQuery / Element
         }
 
         /*

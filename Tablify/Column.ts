@@ -22,28 +22,31 @@ module Tablify {
          * @table       Table                       The table where this column belongs to
          * @columnDef   null/undefined              The columnId is generated automatically
          *              string                      ColumnId. The cells of the newly generated column will be empty.
-         *              Column                      The column will be deep-copied. DOM-connections will not be copied. Note that the new object will have the same columnId
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
+         *              Column                      The column will be deep-copied.
          *              ColumnDescription           Used for deserialisation.
          */
-        constructor(table: Table, columnDef?: ColumnDefinition|ColumnDescription) {
+        constructor(table: Table, columnDef?: ColumnDefinition) {
             this.table = table;
 
-            var columnDefDetails: ColumnDefinitionDetails;        
+            var columnDefDetails: ColumnDefinitionDetails|ColumnDescription;        
             if (typeof columnDef === "string") {
                 columnDefDetails = { columnId: columnDef };
-            } else if (<any>columnDef instanceof Column) {  //Copy-Constructor
-                var other: Column = <Column>columnDef;
-                logger.info("Ceating new column-copy of \"" + other.columnId + "\".");
-                this.columnId = other.columnId;
-                this.defaultTitleContent = other.defaultTitleContent;
-                this.defaultBodyContent = other.defaultBodyContent;
+            } else if (columnDef instanceof Column) {  //Copy-Constructor
+                logger.info("Ceating new column-copy of \"" + columnDef.columnId + "\".");
+                if (columnDef.table === this.table) {
+                    this.columnId = "tcid" + (++Column.columnIdSequence);
+                } else {
+                    this.columnId = columnDef.columnId;
+                }                
+                this.defaultTitleContent = columnDef.defaultTitleContent;
+                this.defaultBodyContent = columnDef.defaultBodyContent;
                 return;
             } else {                                        //null / undefined / ColumnDefinitionDetails / ColumnDescription
                 columnDefDetails = columnDef || {};
             }
 
-            this.columnId = columnDefDetails.columnId || ("jsc" + (++Column.columnIdSequence));
+            this.columnId = columnDefDetails.columnId || ("tcid" + (++Column.columnIdSequence));
 
             logger.info("Ceating new column \"" + this.columnId + "\".");
                        
@@ -105,8 +108,8 @@ module Tablify {
         toObject(): ColumnDescription {
             return {
                 columnId: this.columnId,
-                defaultTitleContent: this.defaultTitleContent.toObject(),
-                defaultBodyContent: this.defaultBodyContent.toObject()
+                defaultTitleContent: this.defaultTitleContent.toObject(true),
+                defaultBodyContent: this.defaultBodyContent.toObject(true)
             };   
         }
     }

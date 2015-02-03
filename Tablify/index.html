@@ -33,7 +33,7 @@
                 alert("Invalid JSON\n" + e.message);
                 return;
             }            
-            new Tablify.Table("#content", obj);
+            new Tablify.Table(obj, "#content");
         }
 
         /*
@@ -45,9 +45,6 @@
                 updateTableList();
             };
             Tablify.tableStore.onTableUnregistered = function (table) {
-                if (window.t.tableId === table.tableId) {
-                    delete window.t;
-                }
                 updateTableList();
             };
             updateTableList();    
@@ -105,6 +102,11 @@
 
 
     <div id="content">
+        <span>
+            <b style="display: block">The Testtable should look like this:</b>
+            <img src="TestTable.png" style="vertical-align: top; width: 250px" />
+        </span>
+        
     </div>
 </body>
 </html>

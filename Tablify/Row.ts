@@ -19,56 +19,76 @@ module Tablify {
          * Generates a new Row
          * @table       Table                   The table where this row belongs to
          * @rowType     RowType                 The type of the row (titleRow, content, footer)
-         * @rowDef      null                    The rowId is generated automatically
+         * @rowDef      null                    The rowId is generated automatically, the cells will have the column's default content
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
-         *              Row                     The row will be deep-copied. DOM-connections will not be copied. Note that the new object will have the same rowId.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
+         *              Row                     The row will be deep-copied.
          *              RowDescription          Used for deserialisation.
-         * @columns     Column[]                The currently existing columns in the table. The Row will get one cell per column, the content depends on the parameter "definition".
+         * @columns     Column[]                The currently existing columns in the table. The Row will get one cell per column, the content depends on the "rowDef" parameter.
          */
-        constructor(table: Table, rowType: RowType, rowDef: RowDefinition|RowDescription, columns: { [key: string]: Column; }) {
+        constructor(table: Table, rowType: RowType, rowDef: RowDefinition, columns: { [key: string]: Column; }) {
             assert(table instanceof Table && typeof rowType === "number" && typeof columns === "object");
             this.table = table;
-
-            var rowInfo: RowDefinitionDetails;
-            if (typeof rowDef === "string") {
-                rowInfo = { rowId: rowDef };
-            } else if (<any>rowDef instanceof Row) {    //Copy-Constructor
-                logger.info("Ceating new row-copy of \"" + other.rowId + "\".");
-                var other: Row = <Row>rowDef;
-                this.rowId = other.rowId; 
-                this.rowType = other.rowType;
-                for (var columnId in other.cells) {
-                    this.cells[columnId] = new Cell(other.cells[columnId]);
-                }
-                return;
-            } else {                                    //null / RowDefinitionDetails / RowDescription
-                rowInfo = rowDef || {};
-            }
             
-            rowInfo.content = rowInfo.content || {};    //Opt. parameter
+            var rowDefDetails: RowDefinitionDetails;
+            if (typeof rowDef === "string") {                       //string = rowId
+                rowDefDetails = { rowId: rowDef };
+            } else if (rowDef instanceof Row) {                     //Copy-Constructor
+                logger.info("Ceating new row-copy of \"" + rowDef.rowId + "\".");
+                if (rowDef.table !== this.table) {
+                    rowDefDetails = { rowId: rowDef.rowId };
+                } else {
+                    rowDefDetails = {};                             //The id is generated later
+                }
+                rowDefDetails.content = rowDef.cells;
+                rowDefDetails.generateMissingColumns = false;       //If the other row contains columns/cells, that our table doesn't have: Don't create the missing columns               
+            } else {                                                //null / RowDefinitionDetails / RowDescription
+                rowDefDetails = rowDef || {};
+            }
 
             this.element = null;
-            this.rowId = rowInfo.rowId || ("jsr" + (++Row.rowIdSequence));
+            this.rowId = rowDefDetails.rowId || ("trid" + (++Row.rowIdSequence));
             this.rowType = rowType;
 
             logger.info("Ceating new row \"" + this.rowId + "\".");
                        
-            if (rowInfo.generateMissingColumns === true) {      //If the content contains data for non-existing columns, the columns should not be generated
+            //cellContents can have one of the following typses: <string|JQuery|Table|Element|Cell| {[key: string]:CellDefinition;}>
+            var cellContents = rowDefDetails.content || {};
+            //If each cell should be initialised with the same content, it must be cloned (deep-copy). jQuery/Elements/Tables must be cloned as well (the Cell-constructor is not capable of doing that) 
+
+            if (typeof cellContents === "string"        //string
+                || cellContents instanceof jQuery       //JQuery
+                || cellContents instanceof Table        //Table
+                || cellContents instanceof Cell         //Cell
+                || isElement(cellContents)) {           //Element
+                var proto: Cell = null;
+                for (var columnId in columns) {             //Generate a cell for each column
+                    if (!proto) {
+                        proto = this.cells[columnId] = new Cell(cellContents);
+                    } else {
+                        this.cells[columnId] = proto.clone();
+                    }
+                }
+                return;
+            } 
+           
+            //cellContents now has the type < {[key: string]: CellDefinition;} >
+
+            if (rowDefDetails.generateMissingColumns === true) {    //If the content contains data for non-existing columns, the columns should be generated
                 //When a column is generated, the argument "columns" will automatically gain an additional field. This field is required in the next loop, which generates the cells for all existing columns.
-                for (var columnId in rowInfo.content) {
+                for (var columnId in <{ [key: string]: CellDefinition; }>cellContents) {
                     if (!(columnId in columns)) {       //This column does not exist yet                   
                         table.addColumn(columnId);      //this row is not part of the table yet -> if we add the column, the cells of this row can't be 
                     }
                 }
             }
-                        
+                                     
             for (var columnId in columns) {             //generate a cell for each column
-                if (columnId in rowInfo.content) {
-                    this.cells[columnId] = new Cell( rowInfo.content[columnId] );
+                if (columnId in <{ [key: string]: CellDefinition; }>cellContents) {
+                    this.cells[columnId] = new Cell(cellContents[columnId]);
                     continue;
                 }
-                logger.info("Using default value for row \"" + this.rowId + "\", col \"" + columnId + "\".");
+                logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
                 switch (this.rowType) {
                     case RowType.title: this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent);
                         break;
@@ -114,7 +134,6 @@ module Tablify {
          * @content   CellDefinition    The cell that should be assigned to the new column. A new copy of this parameter is generated.
          */
         addColumn(column: Column, content: CellDefinition): void {
-            assert_argumentsNotNull(arguments);
             var columnId: string = column.columnId;
             if (columnId in this.cells) {
                 logger.error("The row \""+this.rowId+"\" has already a column with the id \"" + columnId + "\".");
@@ -197,15 +216,11 @@ module Tablify {
          */
         toObject(includeContent?: boolean): RowDescription{
             var description : RowDescription = {
-                rowId:   this.rowId
+                rowId: this.rowId,
+                content: {}
             };
-            if (includeContent === false) {      //Don't include any data
-                return description;
-            }
-            
-            description.content = {};
             for (var columnId in this.cells) {
-                description.content[columnId] = this.cells[columnId].toObject();
+                description.content[columnId] = this.cells[columnId].toObject(includeContent);
             }
             return description;
         }

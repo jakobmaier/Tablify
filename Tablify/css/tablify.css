@@ -2,13 +2,21 @@
 
 
 
-.tablified td, .tablified th {
+.tablified th, .tablified td {
     border: 1px solid #C7C7C7;
     padding: 3px 5px;
 }
 
 .tablified th {
     background-color: #49483E;
+}
+
+
+
+.tablified table:not(.tablified) th, .tablified table:not(.tablified) td{   /*Not-tablified tables within tablified tables*/
+    border: inherit;
+    padding: inherit;
+    background-color: inherit;
 }
 
 

@@ -4,6 +4,7 @@ module Tablify {
     "use strict";
       
     export class Table {
+
         //References to commonly used HTML elements:
         /*[Readonly]*/ table: JQuery = null;    //<table>
         private thead: JQuery;                  //<thead>
@@ -13,6 +14,8 @@ module Tablify {
         private static tableIdSequence: number = 0;     //Used to auto-generate unique ids
         /*[Readonly]*/ tableId: string;                 //Unique table id
        
+        /*[Readonly]*/ parentCell: Cell = null;        //If this is a nested table, parentCell is the container of the table. This variable is set by the Cell. (If the table gets destroyed, the cell needs to be informed to convert Table into JQuery)
+
 
         //Column properties:
         private sortedColumns: Column[] = [];           //All columns, sorted from left to right.
@@ -28,45 +31,49 @@ module Tablify {
         
         
         /*
-         * Generates and returns a new Tablify Table     (Note: If the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
-         * @description     TableDescription    Data, how the table should look like (rows / columns / ...). Used for deserialisation.
-         * @target          string              JQuery-Selector. Is resolved to a JQuery element (see below)
-         *                  JQuery              References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
-         *                  Element             Target element. Is converted to a JQuery element (see above)
+         * Generates and returns a new Tablify Table    (Note: If the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
+         * @tableDef        null/undefined              An empty table with no rows and columns will be created.
+         *                  string                      tableId. An empty table with the given tableId will be generated.
+         *                  TableDefinitionDetails      Data, how the table should look like (rows / columns / ...)
+         *                  Table                       The table will be deep-copied.
+         *                  TableDescription            Used for deserialisation.
+         * @target          string                      JQuery-Selector. Is resolved to a JQuery element (see below)
+         *                  JQuery                      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+         *                  Element                     Target element. Is converted to a JQuery element (see above)
          * Note: If no target is passed, the table won't be appended to the DOM.
          * Note: Both parameters are optional. It is also possible to ommit the first parameter and only pass the target.
+         * Note: If only a single string is passed, it will be interpreted as an selector rather than a tableId (A string as the first argument is always a selector).
          */
-        constructor(target?: string|JQuery|Element);
-        constructor(description: TableDescription|Table, target?: string|JQuery|Element);
-        constructor(description?: TableDescription|Table|(string|JQuery|Element), target?: string|JQuery|Element) {
-            this.tableId = "jsg" + (++Table.tableIdSequence);
+        constructor(target?: Selector);
+        constructor(tableDef: TableDefinition, target?: Selector);
 
-            if (typeof description === "string" || (description instanceof jQuery)) {
+        constructor(tableDef?: TableDefinition|Selector, target?: Selector) {  
+            if (typeof tableDef === "string" && target) {       //The tableId has been given (2 parameters, the first one is a string)
+                this.tableId = tableDef;
+            } else {
+                this.tableId = "ttid" + (++Table.tableIdSequence);
+            }
+
+        //Interchange arguments, if the first parameter has been omitted:
+            if (typeof tableDef === "string" || tableDef instanceof jQuery || isElement(tableDef)) {    //If the first parameter is a string, it will always be interpreted as a selector.
                 if (arguments.length !== 1) {
-                    logger.error("Invalid usage. The first parameter needs to be a TableDescription, while the second parameter is a target. Both parameters can be ommited, but their order can't be interchanged.");
+                    logger.error("Invalid usage. The first parameter needs to be the TableDefinition, while the second parameter is the target. Both parameters can be ommited, but their order can't be interchanged.");
                     return;
                 }
-                target = <string|JQuery>description;
-                description = null;
+                target = <string|JQuery|Element>tableDef;
+                tableDef = null;
             }
-            
+        //Find the target for the table:    
             if (!target) {                                  //No target provided -> don't attach to DOM
                 logger.log("Creating detached table element.");
                 this.table = $("<table><thead></thead><tbody></tbody></table>");
             } else {
             //Find the selected element:
-                if (typeof target === "string") {           //selector
-                    this.table = $(target);             
-                    if (this.table.length !== 1) {
-                        logger.error("Unable to find unique DOM Element with the following selector: \"" + target + "\"");
-                        this.table = null;
-                        return;
-                    }
-                } else if (this.table instanceof jQuery) {  //JQuery
-                    this.table = <JQuery>target;
-                }  else {                                   //Element
-                    this.table = $(target);
-                } 
+                this.table = resolveUniSelector(target);
+                if (!this.table) {
+                    logger.error("Unable to find unique DOM Element with the following selector: \"" + target + "\"");
+                    return;
+                }
             //Check if the selected element can be used: 
                 if (this.table.prop("tagName") !== "TABLE") {       //Create a new table within this element
                     logger.log("Appending table element. Parent tag: ", this.table.prop("tagName"));
@@ -86,42 +93,53 @@ module Tablify {
                     this.table = null;
                     return;
                 }
-            }                                  
-            
+            }    
+        //The target has been found, now the table needs to be initialised:
             this.table.addClass("tablified");
             this.table.attr("data-tableId", this.tableId);
             tableStore.registerTable(this);
 
             this.thead = this.table.find("thead");
             this.tbody = this.table.find("tbody");
-
-            if (!description) {     //No content to generate
+        //Generate the table content:
+            if (!tableDef || typeof tableDef === "string") {    //No content to generate
                 return;
             }
-        //Generate the table content:
-            var descriptionObj: TableDescription;
-            if (<TableDescription|Table>description instanceof Table) {
-                descriptionObj = (<Table>description).toObject(true);
+            // <TableDefinitionDetails|Table|TableDescription>
+
+            var defDetails: TableDefinitionDetails;
+
+            if (<TableDefinitionDetails|Table|TableDescription>tableDef instanceof Table) {         //Copy-constructor
+                defDetails = (<Table>tableDef).toObject(true);
+                logger.info("Copying existing table " + (<Table>tableDef).tableId);
             } else {
-                descriptionObj = <TableDescription>description;
+                defDetails = <TableDefinitionDetails|TableDescription>tableDef;
             }
 
-            for (var i = 0; i < descriptionObj.columns.length; ++i) {
-                this.addColumn(descriptionObj.columns[i] );
+            if ("columns" in defDetails) {
+                for (var i = 0; i < defDetails.columns.length; ++i) {
+                    this.addColumn(defDetails.columns[i]);
+                }
             }
-            var titleRowCount = descriptionObj.titleRowCount || 0;
-            for (var i = 0; i < descriptionObj.rows.length; ++i) {
-                this.addRow(titleRowCount > i ? RowType.title : RowType.body, descriptionObj.rows[i]);
+            if ("rows" in defDetails) {
+                var titleRowCount = defDetails.titleRowCount || 0;
+                for (var i = 0; i < defDetails.rows.length; ++i) {
+                    this.addRow(titleRowCount > i ? RowType.title : RowType.body, defDetails.rows[i]);
+                }
             }
         }
         
         /*
-         * Returns true, if the object represents the given table-element
-         * @table   JQuery      References a HTMLElement. If this HTMLElement is managed by this table object, true is returned
+         * Returns true, if the table manages the given HTMLelement
+         * @table   Selector    References a HTMLElement. If this HTMLElement is managed by this table object, true is returned
          * @return  boolean     true: The given HTMLElement (<table>) is managed by this Table-instance. Otherwise, false is returned
          */
-        representsTable(table: JQuery): boolean {
-            return (this.table === table);
+        representsTable(table: Selector): boolean {
+            var other = resolveUniSelector(table);
+            if (!other) {
+                return false;
+            }
+            return (this.table[0] === other[0]);
         }
 
         /*
@@ -131,6 +149,11 @@ module Tablify {
             tableStore.unregisterTable(this);
             this.table.removeClass("tablified");
             this.table.removeAttr("data-tableId");
+
+            if (this.parentCell) {  //This table is nested and part of a Cell that stores a Table reference -> change it into a not-manages Table
+                assert(this.parentCell.content === this);
+                this.parentCell.content = this.table; 
+            }
             this.table = null;
         }
     
@@ -144,28 +167,37 @@ module Tablify {
 
         /*
          * Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
-         * @target      string      jQuery selector defining the target Element
-         *              JQuery      JQuery element referencing the target Element
-         *              Element     target element
+         * @target      Selector    target element
          */
-        appendTo(target: string|JQuery|Element): void {
+        appendTo(target: Selector): void {
+            logger.log("Attaching table element.");
             this.table.appendTo(<any>target);       //cast is needed due to the use of an outdated TypeScript version within the jQuery definition
+        }
+
+        /*
+         * Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
+         * @target      Selector    target element
+         */
+        prependTo(target: Selector): void {
+            logger.log("Attaching table element.");
+            this.table.prependTo(<any>target);       //cast is needed due to the use of an outdated TypeScript version within the jQuery definition
         }
         
         /*
          * Adds a new column to the table.
-         * @column      null / undefined            The columnId is generated automatically
+         * @column      null / undefined            The columnId is generated automatically.
          *              string                      ColumnId. The cells of the newly generated column will be empty.
-         *              Column                      The column will be deep-copied. Note that the new object will have the same columnId
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
+         *              Column                      The column will be deep-copied.
          *              ColumnDescription           Used for deserialisation.
+         * @return      Column                      Returns the newly generated Column. Returns null if the column couldn't get generated.
          */
-        addColumn(columnDef?: ColumnDefinition|ColumnDescription): void {
+        addColumn(columnDef?: ColumnDefinition): Column {
             var column = new Column(this, columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
                 logger.error("There is already a column with the id \"" + columnId + "\".");
-                return;
+                return null;
             }
             
             var content: { [key: string]: CellDefinition; } = {};
@@ -201,24 +233,26 @@ module Tablify {
                 }
                 row.addColumn(column, cell);
             }
+            return column;
         }
         
         /*
          * Adds a new row to the table
-         * @rowType     RowType                 The type of the row (title, body, footer)
+         * @rowType     RowType                 The type of the row (title, body, footer).
          * @rowDef      null / undefined        The rowId is generated automatically.
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
-         *              Row                     The row will be deep-copied. Note that the new object will have the same rowId.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
+         *              Row                     The row will be deep-copied.
          *              RowDescription          Used for deserialisation.
+         * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addRow(rowType: RowType, rowDef?: RowDefinition|RowDescription): void {
+        addRow(rowType: RowType, rowDef?: RowDefinition): Row {
             var row = new Row(this, rowType, rowDef, this.columns);
             var rowId: string = row.rowId;
             
             if (rowId in this.rows) {
                 logger.error("There is already a row with the id \"" + rowId + "\".");
-                return;
+                return null;
             }
             this.rows[rowId] = row;
             switch (rowType) {
@@ -229,7 +263,8 @@ module Tablify {
                     this.tbody.append(row.generateDom());       //Add the row to the table-body
                     break;
                 default:    assert(false, "Invalid RowType given.");
-            }         
+            }  
+            return row;       
         }
 
         /*
@@ -508,6 +543,8 @@ module Tablify {
          * @return              TableDescription    DeepCopy of this table
          */
         toObject(includeContent?: boolean): TableDescription {
+            //assert(this.table !== null, "The table has already been destroyed");
+
             var description: TableDescription = {
                 columns: [],
                 rows: [],

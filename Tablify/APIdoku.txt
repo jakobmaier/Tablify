@@ -10,9 +10,9 @@ TableStore (Singleton)
 ***********************************************************
     tableList               readonly Table[]                                                        // List with all Tables, that are currently active on the web page
 
-    getTableByElement       (table: JQuery): Table                                                  // Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
-    getTableById            (tableId: string): Table                                                 // Returns the Table-instance with a specific id. If the id does not exist, null is returned
-
+    getTableByElement       (table: Selector): Table                                                // Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
+    getTableById            (tableId: string): Table                                                // Returns the Table-instance with a specific id. If the id does not exist, null is returned
+    getTable                (table: string|Selector): Table                                         // Returns the requested Table instance.
 Eventhandlers:
     onTableRegistered       (table: Table) => void = null;                                          // Is called everytime a new table is initialised
     onTableUnregistered     (table: Table) => void = null;                                          // Is called everytime an existing table is destroyed
@@ -23,19 +23,20 @@ Eventhandlers:
 Table (Manages exacly one HTMLTableElement)
 ***********************************************************
     table                   readonly JQuery                                                         // References the HTML table element
-    tableId                  readonly string;                                                       // Unique table id
+    tableId                 readonly string                                                         // Unique table id
 
-    constructor             (identifier?: string|JQuery|Element)                                    // Creates a new Table / manages a HTMLTableElement
-    constructor             (description: TableDescription|Table, identifier?: string|JQuery|Element)       // Creates a new Table / manages a HTMLTableElement
+    constructor             (target?: Selector)                                                     // Creates a new Table / manages a HTMLTableElement
+    constructor             (tableDef: TableDefinition, target?: Selector)                          // Creates a new Table / manages a HTMLTableElement
 
-    representsTable         (table: JQuery): boolean                                                // Returns true, if the object represents the given table-element
+    representsTable         (table: Selector): boolean                                              // Returns true, if the table manages the given HTMLelement
     destroy                 (): void                                                                // Destroys the Tablify Table. This object will get unusable.
 
     isPartOfDOM             (): boolean                                                             // Returns true, if the table is part of the DOM
-    appendTo                (target: string|JQuery|Element): void                                   // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
+    appendTo                (target: Selector): void                                                // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
+    prependTo               (target: Selector): void                                                // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
-    addColumn               (columnDef?: ColumnDefinition|ColumnDescription): void                  // Adds a new column to the table.
-    addRow                  (rowType: RowType, rowDef?: RowDefinition|RowDescription): void         // Adds a new row to the table
+    addColumn               (columnDef?: ColumnDefinition): Column                                  // Adds a new column to the table.
+    addRow                  (rowType: RowType, rowDef?: RowDefinition): Row                         // Adds a new row to the table
 
     getRowIndex             (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
     getColumnIndex          (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
@@ -96,10 +97,10 @@ Cell
 
 Tablify (module)
 ***********************************************************
-    tableStore              TableStore                                                                      // singleton instance
-    tablify                 (object: Object|Array<any>|any, identifier?: string|JQuery|Element): Table      // converts any object into a Table
+    tableStore              TableStore                                                              // singleton instance
+    tablify                 (object: Object|Array<any>|any, target?: Tablify.Selector): Table       // converts any object into a Table
 
-    Array.tablify           (target?: string|JQuery|Element): Tablify.Table                                 // shortcut for Tablify.tablify(theArray, target)
+    Array.tablify           (target?: Tablify.Selector): Tablify.Table                              // shortcut for Tablify.tablify(theArray, target)
 
 
 
@@ -140,4 +141,32 @@ TableDescription - How to initialise a table:
         ],
         titleRowCount: 0                            //number of rows, that belong to the title
     }
+
+
+
+
+
+Todos:
+############
+
+
+cell/row/column: --> für die (public) properties einen setter definieren, und bei verwendung auch gleich das HTML aktualisieren :)
+
+optimise "Parse HTML" events
+
+
+
+
+
+todo: table.destroy -> wenn die table teil einer anderen table ist, muss in der parentTable "Table" mit "jQuery" ausgetauscht werden. ==> Eventhandler
+parentCell austauschen, und stattdessen eventHandler definieren
+
+
+
+ein feld mit "other" erlauben, das auf alle felder zutrifft, die nicht in "content" gestanden sind (überschreibt den default content) -> aber nur bei der row
+
+
+
+Für cells optional ein "toObject()" übergeben lassen -> Kombination aus jQuery und Table im content möglich. Auch das "withData" ist customiseable
+
 

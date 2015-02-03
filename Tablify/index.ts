@@ -1,14 +1,19 @@
 ﻿
 
-window.onload = () => {
+function generateTestTable(): Tablify.Table {
     "use strict";
+    var smallTable = new Tablify.Table({
+        columns: ["col"],
+        rows: ["row"],
+        titleRowCount: 1
+    }, "#content");
 
-    //new Tablify.Table("#content>table");
+
     var table = new Tablify.Table("#content");
 
-    table.addColumn(/*"Column 1"*/);
+    table.addColumn("Column 1");
     table.addColumn({
-        //columnId: "Column 2",
+        columnId: "Column 2",
         defaultTitleContent: "2. Spalte",
         defaultBodyContent: "---"
     });
@@ -18,77 +23,87 @@ window.onload = () => {
     table.addRow(Tablify.RowType.body, {
         //rowId: "First row",
         content: {
-            "jsc1": new Tablify.Cell("First cell"),
-            "jsc2": "Second cell"
-        }
+            "Column 1": new Tablify.Cell("First cell"),
+            "Column 3": "Third cell"
+        },
+        generateMissingColumns: true
     });
 
     table.addRow(Tablify.RowType.title, {
         content: {
-            "jsc1": new Tablify.Cell("column 1"),
-            "jsc2": "column 2"
+            "Column 1": new Tablify.Cell("column 1"),
+            "Column 2": $("<div style='color: red'>column 2</div>").get(0),
+            "Column 3": $("<div style='color: red'>column 3</div>")
         }
     });
 
+    table.addRow(Tablify.RowType.body, { rowId: "row4", content: "!4!" });
+    table.addRow(Tablify.RowType.body, { rowId: "row5", content: $("<div style='color: red'>5</div>") });
+    table.addRow(Tablify.RowType.body, { rowId: "row6", content: $("<div style='color: red'>6</div>").get(0) });
+
+    var destroyedTable = new Tablify.Table(smallTable, "#content");
 
     table.addRow(Tablify.RowType.body, {
-        //rowId: "Second row",
+        rowId: "Contains moved Table",
         content: {
-            "jsc1": "!!!"
+            "Column 1": Tablify.tableStore.getTable(smallTable.tableId),
+            "Column 2": Tablify.tableStore.getTable(destroyedTable.table),
+            "Column 3": "##",
+            "No column": "nothing"
         }
-    });/*
+    });
+    destroyedTable.destroy();
+    
     table.addColumn({
-        columnId: "Column 3",
-        defaultTitleContent: "InvisibleTitle",
-        defaultBodyContent: "<b>That's what I call a cell!</b>",
+        // columnId: "Column 4",
+        defaultTitleContent: "Spalte 4",
+        defaultBodyContent: "---",
         content: {
-            "jsr1": "3x1",
-            "Title row": "Title of Nr. 3"
-        }
-    });*/
-    table.addRow(Tablify.RowType.body);
-    table.addRow(Tablify.RowType.body);
-    table.addRow(Tablify.RowType.body);
-    table.addRow(Tablify.RowType.body);
-    table.addRow(Tablify.RowType.body);
+            "Title row": null,
+            "row6": "row 6",
+            "row8": "row 8",
+            "row4": new Tablify.Table(table.toObject(true))
+        },
+        generateMissingRows: true
+    });
+
+    return table;
+}
 
 
 
 
-    //console.log(table.toObject());
-    console.log(JSON.stringify(table.toObject(true)));
 
 
-    new Tablify.Table(table.toObject(true), "#content");
+
+
+
+
+
+
+window.onload = () => {
+    "use strict";
+
+
+    var table = generateTestTable();
+  
     new Tablify.Table(table.toObject(false), "#content");
 
-    //var copyTable = new Tablify.Table(table.table);
-    //console.log(copyTable === table);
 
-    
     console.log("===================================================");
     new Tablify.Table({
-        "columns": [
-        ],
-        "rows": [
-            {
-                "rowId": "row1",
+        "rows": [{
                 "content": {
                     "col1": "cell1",
                     "col2": "cell x"
                 },
                 "generateMissingColumns": true
-            },
-            {
-                "rowId": "row2", 
-                "content": {
+            },{ "content": {
                     "col1": "cell2",
                     "col2": "cell x"
-                },
-                "generateMissingColumns": true
+                }
             }
-        ],
-        "titleRowCount": 0
+        ]
     }, "#content");
 
 

@@ -10,10 +10,10 @@ module Tablify {
         info(...args: any[]): void;
         warning(...args: any[]): void;
         error(...args: any[]): void;
-        logIf(check: boolean, ...args: any[]): void;
-        infoIf(check: boolean, ...args: any[]): void;
-        warningIf(check: boolean, ...args: any[]): void;
-        errorIf(check: boolean, ...args: any[]): void;
+        logIf(check: boolean|any, ...args: any[]): void;
+        infoIf(check: boolean|any, ...args: any[]): void;
+        warningIf(check: boolean|any, ...args: any[]): void;
+        errorIf(check: boolean|any, ...args: any[]): void;
     }
 
     class ConsoleLogger implements ILogger {
@@ -30,22 +30,22 @@ module Tablify {
             console.error.apply(console, arguments);
         }
 
-        logIf(check: boolean, ...args: any[]): void {
+        logIf(check: boolean|any, ...args: any[]): void {
             if (check) {
                 this.log.apply(this, args);
             }
         }
-        infoIf(check: boolean, ...args: any[]): void {
+        infoIf(check: boolean|any, ...args: any[]): void {
             if (check) {
                 this.info.apply(this, args);
             }
         }
-        warningIf(check: boolean, ...args: any[]): void {
+        warningIf(check: boolean|any, ...args: any[]): void {
             if (check) {
                 this.warning.apply(this, args);
             }
         }
-        errorIf(check: boolean, ...args: any[]): void {
+        errorIf(check: boolean|any, ...args: any[]): void {
             if (check) {
                 this.error.apply(this, args);
             }
@@ -57,11 +57,11 @@ module Tablify {
     
     /*
      * If the check evaluates to false, an error message is logged. No exception is thrown.
-     * @check   boolean     true: everything ok; false: error
-     * @...     mixed       Any additional information that should be logged if check is false
-     * @return  boolean     true: everything ok; false: an error has been logged
+     * @check   boolean|any     truethy: everything ok; falsey: error
+     * @...     mixed           Any additional information that should be logged if check is false
+     * @return  boolean         true: everything ok; false: an error has been logged
      */
-    export function weakAssert(check: boolean, ...args: any[]): boolean {
+    export function weakAssert(check: boolean|any, ...args: any[]): boolean {
         if (!check) {
             var err: any = new Error();
             var errorMsg: any[] = ["Assertion failed", err.stack, "\n"];
@@ -73,11 +73,11 @@ module Tablify {
 
     /*
      * If the check evaluates to false, an error message is logged and an exception is thrown.
-     * @check   boolean     true: everything ok; false: error
-     * @...     mixed       Any additional information that should be logged if check is false
-     * @return  boolean     true: everything ok; false: an error has been logged
+     * @check   boolean|any     truethy: everything ok; falsey: error
+     * @...     mixed           Any additional information that should be logged if check is false
+     * @return  boolean         true: everything ok; false: an error has been logged
      */
-    export function assert(check: boolean, ...args: any[]): boolean {
+    export function assert(check: boolean|any, ...args: any[]): boolean {
         if (!weakAssert.apply(this, arguments)) {
             throw new Error("Assertion failed");
         }
