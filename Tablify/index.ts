@@ -74,6 +74,7 @@ function generateTestTable(): Tablify.Table {
         defaultBodyContent: "---",
         content: {
             "Title row": null,
+            "row5": Tablify.tablify([[[[[[[[42]]]]]]]], undefined, 0),
             "row6": primitiveTablifies,
             "row7": Tablify.tablify(new Date(0)),
             "row8": Tablify.tablify([42, { "obj1": "cont1", "obj2": "cont2", "obj3": [[], {}] }]),
@@ -148,9 +149,7 @@ window.onload = () => {
     var array = ["a", "b", "c", "d", "e", "f", "g"];
     var object = { first: array, second: array, third: array };
     var superArray = [object, object, object, object];
-
-
-
+    
     console.log("Tablifying...");
     var contentToTablify = [
         obj,
@@ -166,15 +165,13 @@ window.onload = () => {
     
 
     for (var i = 0; i < contentToTablify.length; ++i) {
-        try {
-            (<any>contentToTablify[i]).tablify("#content");
-        } catch(e) {
-            console.log("no tablify for", contentToTablify[i]);
-
-            Tablify.tablify(contentToTablify[i], "#content");
-        }
+        Tablify.tablify(contentToTablify[i], "#content", 1);
     }
         
+    
+
+
+
 };
 
  

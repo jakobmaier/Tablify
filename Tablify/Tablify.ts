@@ -14,16 +14,22 @@ module Tablify {
 
     /*
      * Converts any Array or Object into a Table. Recursion is possible.
-     * @object      Object      The table will have 2 rows: The first (title) row contains the key, the second (body) row the object's value.
-     *              Array       The table will have 2 rows: The first (title) row contains the array index, the second (body) row the array's value.
-     *              any         Any other type (string, number, function,...) will result in a table containing 2 cells: The first (top/title) cell contains the type ("typeof object"), eventually following by "(RegExp)" or "(Date)", the second (bottom/body) cell contains the result of "object.toString()"
-     * @target      string      JQuery-Selector. Is resolved to a JQuery element (see below)
-     *              JQuery      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
-     *              Element     Target element. Is converted to a JQuery element (see above)
-     * @return      Table       Returns the generated Table instance.
+     * @object          Object      The table will have 2 rows: The first (title) row contains the key, the second (body) row the object's value.
+     *                  Array       The table will have 2 rows: The first (title) row contains the array index, the second (body) row the array's value.
+     *                  any         Any other type (string, number, function,...) will result in a table containing 2 cells: The first (top/title) cell contains the type ("typeof object"), eventually following by "(RegExp)" or "(Date)", the second (bottom/body) cell contains the result of "object.toString()"
+     * @target          string      JQuery-Selector. Is resolved to a JQuery element (see below)
+     *                  JQuery      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
+     *                  Element     Target element. Is converted to a JQuery element (see above)
+     * @maxRecursion    number      The max. recursion depth, default = 10. If the max. depth has been reached, objects and arrays will be displayed using ".toString()".
+     * @return          Table       Returns the generated Table instance.
      * Note: If an array or object is passed and one of it's fields is another array/object, tablify is called recursive, leading in nested tables. The return value represents the top table.
      */
-    export function tablify(object: Object|Array<any>|any, target?: Selector): Table {                
+    export function tablify(object: Object|Array<any>|any, target?: Selector, maxRecursion?: number): Table { 
+        if (typeof maxRecursion !== "number") {
+            maxRecursion = 10;
+        }
+        --maxRecursion;
+
         if (object instanceof Array) {
             var table = new Table({
                 rows: [ "index", "value" ],
@@ -34,7 +40,7 @@ module Tablify {
                 table.addColumn({
                     columnId:   index,
                     content: {  "index": index,
-                                "value": (typeof object[i] !== "object") ? object[i].toString() : tablify(object[i])
+                                "value": (typeof object[i] !== "object" || maxRecursion < 0) ? object[i].toString() : tablify(object[i], null, maxRecursion)
                     }
                 });
             }
@@ -54,7 +60,7 @@ module Tablify {
                 table.addColumn({
                     columnId: key,
                     content: {  "key": key,
-                                "value": (typeof object[key] !== "object") ? object[key].toString() : tablify(object[key])
+                                "value": (typeof object[key] !== "object" || maxRecursion < 0) ? object[key].toString() : tablify(object[key], null, maxRecursion)
                     }
                 });
             }
@@ -76,6 +82,10 @@ module Tablify {
         }, target);        
         return table;
     }
+    
+
+
+
 
 
     /*
