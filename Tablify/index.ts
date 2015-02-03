@@ -44,7 +44,7 @@ function generateTestTable(): Tablify.Table {
     var destroyedTable = new Tablify.Table(smallTable, "#content");
 
     table.addRow(Tablify.RowType.body, {
-        rowId: "Contains moved Table",
+        rowId: "row7",
         content: {
             "Column 1": Tablify.tableStore.getTable(smallTable.tableId),
             "Column 2": Tablify.tableStore.getTable(destroyedTable.table),
@@ -54,18 +54,34 @@ function generateTestTable(): Tablify.Table {
     });
     destroyedTable.destroy();
     
+    var primitiveTablifies = new Tablify.Table(
+        {
+            rows: [{
+                content: {
+                    "num": Tablify.tablify(42.5),
+                    "str": Tablify.tablify("str"),
+                    "func": Tablify.tablify(function () { }),
+                    "regexp": Tablify.tablify(/[a-z]/g),
+                    //"date": Tablify.tablify(new Date())
+                },
+                generateMissingColumns: true
+            }]
+        });
+
     table.addColumn({
         // columnId: "Column 4",
         defaultTitleContent: "Spalte 4",
         defaultBodyContent: "---",
         content: {
             "Title row": null,
-            "row6": "row 6",
-            "row8": "row 8",
+            "row6": primitiveTablifies,
+            "row7": Tablify.tablify(new Date(0)),
+            "row8": Tablify.tablify([42, { "obj1": "cont1", "obj2": "cont2", "obj3": [[], {}] }]),
             "row4": new Tablify.Table(table.toObject(true))
         },
         generateMissingRows: true
     });
+
 
     return table;
 }
@@ -83,14 +99,13 @@ function generateTestTable(): Tablify.Table {
 
 window.onload = () => {
     "use strict";
-
-
+    
     var table = generateTestTable();
   
     new Tablify.Table(table.toObject(false), "#content");
 
 
-    console.log("===================================================");
+    
     new Tablify.Table({
         "rows": [{
                 "content": {
@@ -107,11 +122,7 @@ window.onload = () => {
     }, "#content");
 
 
-
-
-
-
-
+    console.log("===================================================");
 
 
 
@@ -137,7 +148,6 @@ window.onload = () => {
     var array = ["a", "b", "c", "d", "e", "f", "g"];
     var object = { first: array, second: array, third: array };
     var superArray = [object, object, object, object];
-
 
 
 
