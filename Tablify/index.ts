@@ -18,10 +18,11 @@ function generateTestTable(): Tablify.Table {
         defaultBodyContent: "---"
     });
 
-    table.addRow(Tablify.RowType.title, "Title row");
+    table.addTitleRow("Title row");
 
-    table.addRow(Tablify.RowType.body, {
-        //rowId: "First row",
+    table.addRow( {
+        rowId: "row1",
+        rowType: Tablify.RowType.body,
         content: {
             "Column 1": new Tablify.Cell("First cell"),
             "Column 3": "Third cell"
@@ -29,7 +30,8 @@ function generateTestTable(): Tablify.Table {
         generateMissingColumns: true
     });
 
-    table.addRow(Tablify.RowType.title, {
+    table.addRow( {
+        rowType: Tablify.RowType.title,
         content: {
             "Column 1": new Tablify.Cell("column 1"),
             "Column 2": $("<div style='color: red'>column 2</div>").get(0),
@@ -37,18 +39,18 @@ function generateTestTable(): Tablify.Table {
         }
     });
 
-    table.addRow(Tablify.RowType.body, { rowId: "row4", content: "!4!" });
-    table.addRow(Tablify.RowType.body, { rowId: "row5", content: $("<div style='color: red'>5</div>") });
-    table.addRow(Tablify.RowType.body, { rowId: "row6", content: $("<div style='color: red'>6</div>").get(0) });
+    table.addBodyRow({ rowId: "row4", rowType: Tablify.RowType.title, content: "!4!" });
+    table.addRow({ rowId: "row5", content: $("<div style='color: red'>5</div>") });
+    table.addRow({ rowId: "row6", content: $("<div style='color: red'>6</div>").get(0) });
 
     var destroyedTable = new Tablify.Table(smallTable, "#content");
 
-    table.addRow(Tablify.RowType.body, {
+    table.addRow( {
         rowId: "row7",
         content: {
             "Column 1": Tablify.tableStore.getTable(smallTable.tableId),
             "Column 2": Tablify.tableStore.getTable(destroyedTable.table),
-            "Column 3": "##",
+            "Column 3": new Tablify.Table({ rows: 3, columns: 2, titleRowCount: 1 }),
             "No column": "nothing"
         }
     });
@@ -67,6 +69,7 @@ function generateTestTable(): Tablify.Table {
                 generateMissingColumns: true
             }]
         });
+    
 
     table.addColumn({
         // columnId: "Column 4",
@@ -74,6 +77,7 @@ function generateTestTable(): Tablify.Table {
         defaultBodyContent: "---",
         content: {
             "Title row": null,
+            "row1": table.getCell(table.getRow(table.getRowPosition(table.getRow("row1"))).rowId, table.getColumnPosition(table.getColumn("Column 1"))),
             "row5": Tablify.tablify([[[[[[[[42]]]]]]]], undefined, 0),
             "row6": primitiveTablifies,
             "row7": Tablify.tablify(new Date(0)),
@@ -83,7 +87,26 @@ function generateTestTable(): Tablify.Table {
         generateMissingRows: true
     });
 
-
+    table.addColumn("temp1");
+    table.addColumn("temp2").remove();
+    try {
+        table.removeColumn("noExistingColumn");
+    } catch (e) {
+        if (!(e instanceof Tablify.OperationFailedException)) {
+            throw e;
+        }
+        table.removeColumn("temp1");
+    }
+    table.addRow("temp1");
+    table.addRow("temp2").remove();
+    try {
+        table.removeRow("noExistingRow");
+    } catch (e) {
+        if (!(e instanceof Tablify.OperationFailedException)) {
+            throw e;
+        }
+        table.removeRow("temp1");
+    }
     return table;
 }
 

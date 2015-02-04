@@ -4,7 +4,7 @@ module Tablify {
     "use strict";
 
     export class Column {
-        private table: Table;                           //The table where this column belongs to  
+        /*[Readonly]*/ table: Table;                    //The table where this column belongs to  
 
         private static columnIdSequence: number = 0;    //Used to auto-generate unique ids, if the user didn't pass an Id (note that this sequence produces globally unique ids)
         /*[Readonly]*/ columnId: string;                //internal id, unique within the table
@@ -84,11 +84,12 @@ module Tablify {
         /*
          * Returns the cell of a sepcific row.
          * @row             string                      Returns the cell of the row with the given rowId. If the row doesn't exist, null is returned
-         *                  number                      Returns the cell of the row with the specified index. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, null is being returned.
-         *                                              Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a rowId, rather than an index.
+         *                  number                      Returns the cell of the row with the specified position/index. The first title-row has position 0. The first body row has the position titleRowCount. If the position is out of bounds, null is being returned.
+         *                  Row                         Returns the cell belonging to this rows
+         *                                              Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a rowId, rather than a position.
          * @return          Cell                        The cell of the given row. If the row does not exist, null is being returned.
          */
-        getCell(row: string|number): Cell {
+        getCell(row: string|number|Row): Cell {
             return this.table.getCell(row, this.columnId);
         }
 

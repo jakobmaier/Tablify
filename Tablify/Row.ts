@@ -4,7 +4,7 @@ module Tablify {
     "use strict";
 
     export class Row {
-        private table: Table;                           //The table where this row belongs to
+        /*[Readonly]*/ table: Table;                    //The table where this row belongs to
 
         /*[Readonly]*/ element: JQuery = null;          //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
         
@@ -18,7 +18,6 @@ module Tablify {
          * [Internal]
          * Generates a new Row
          * @table       Table                   The table where this row belongs to
-         * @rowType     RowType                 The type of the row (titleRow, content, footer)
          * @rowDef      null                    The rowId is generated automatically, the cells will have the column's default content
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
@@ -26,8 +25,8 @@ module Tablify {
          *              RowDescription          Used for deserialisation.
          * @columns     Column[]                The currently existing columns in the table. The Row will get one cell per column, the content depends on the "rowDef" parameter.
          */
-        constructor(table: Table, rowType: RowType, rowDef: RowDefinition, columns: { [key: string]: Column; }) {
-            assert(table instanceof Table && typeof rowType === "number" && typeof columns === "object");
+        constructor(table: Table, rowDef: RowDefinition, columns: { [key: string]: Column; }) {
+            assert(table instanceof Table && typeof columns === "object");
             this.table = table;
             
             var rowDefDetails: RowDefinitionDetails;
@@ -35,21 +34,20 @@ module Tablify {
                 rowDefDetails = { rowId: rowDef };
             } else if (rowDef instanceof Row) {                     //Copy-Constructor
                 logger.info("Ceating new row-copy of \"" + rowDef.rowId + "\".");
+                rowDefDetails = rowDef.toObject(true);
                 if (rowDef.table !== this.table) {
                     rowDefDetails = { rowId: rowDef.rowId };
                 } else {
                     rowDefDetails = {};                             //The id is generated later
                 }
-                rowDefDetails.content = rowDef.cells;
                 rowDefDetails.generateMissingColumns = false;       //If the other row contains columns/cells, that our table doesn't have: Don't create the missing columns               
             } else {                                                //null / RowDefinitionDetails / RowDescription
                 rowDefDetails = rowDef || {};
             }
 
             this.element = null;
-            this.rowId = rowDefDetails.rowId || ("trid" + (++Row.rowIdSequence));
-            this.rowType = rowType;
-
+            this.rowId = rowDefDetails.rowId || ("trid" + (++Row.rowIdSequence));  
+            this.rowType = (typeof rowDefDetails.rowType === "number") ? rowDefDetails.rowType : RowType.body;
             logger.info("Ceating new row \"" + this.rowId + "\".");
                        
             //cellContents can have one of the following typses: <string|JQuery|Table|Element|Cell| {[key: string]:CellDefinition;}>
@@ -172,17 +170,20 @@ module Tablify {
         /*
          * Returns the cell of a sepcific column.
          * @column      string      Returns the cell of the column with the given columnId. If the column doesn't exist, null is returned
-         *              number      Returns the cell of the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
-         *                          Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a columnId, rather than an index.
+         *              number      Returns the cell of the column with the specified position/index. The first (left) column has position 0. If the position is out of bounds, null is being returned.
+         *              Column      Returns the cell belonging to this column.
+         *                          Note that passing numbers as strings (eg. getCell("4");) will be interpreted as a columnId, rather than a position.
          * @return      Cell        The cell of the given column. If the column does not exist, null is being returned.
          */
-        getCell(column: string|number): Cell {
-            if (typeof column === "number") {           //Get the column with that index
-                var col = this.table.getColumn(column);
+        getCell(column: string|number|Column): Cell {
+            if (typeof column === "number") {           //Get the column with that position/index
+                var col = this.table.getColumn(<number>column);
                 if (col === null) {     //The column does not exist
                     return null;
                 }
                 column = col.columnId;
+            } else if (<any>column instanceof Column) {
+                column = (<Column>column).columnId;
             }
             return this.cells[<string>column] || null;
         }
@@ -217,6 +218,7 @@ module Tablify {
         toObject(includeContent?: boolean): RowDescription{
             var description : RowDescription = {
                 rowId: this.rowId,
+                rowType: this.rowType,
                 content: {}
             };
             for (var columnId in this.cells) {

@@ -23,6 +23,7 @@ module Tablify {
 
     export type RowDescription = {
         rowId: string;
+        rowType: RowType;
         content: {                          
             [key: string]: CellDescription; //{ columnId: CellDescription, ...}
         };
@@ -31,7 +32,6 @@ module Tablify {
     export type TableDescription = {
         columns: ColumnDescription[];
         rows: RowDescription[];
-        titleRowCount?: number;             //Default: 0
     };
 
 
@@ -78,6 +78,7 @@ module Tablify {
 
     export type RowDefinitionDetails = {
         rowId?: string;
+        rowType?: RowType;                              //default: 1 (body)
         content?: CellContent | Element | Cell | { [key: string]: CellDefinition; };  //{ columnId: CellDefinition, ...}      If only a single CellDefinition is given, it will be used for each cell in the row
         generateMissingColumns?: boolean                // true: if the content contains columnIds that do not yet exist, a new column will be generated; false (default): not-existing columnIds will be ignored
     };
@@ -86,13 +87,11 @@ module Tablify {
     
 //Creating Tables from JSON:
     export type TableDefinitionDetails = {
-        columns?: ColumnDefinition[];
-        rows?: RowDefinition[];
-        titleRowCount?: number;             //Default: 0
+        columns?: number|ColumnDefinition[];
+        rows?: number|RowDefinition[];
+        titleRowCount?: number;                         //Number of rows who are automatically interpreted as titlerows, ignoring possible "row.rowType" options. Default: 0
     };
 
     export type TableDefinition = string | TableDefinitionDetails | Table | TableDescription;       //string = tableId
-
-
 
 } 

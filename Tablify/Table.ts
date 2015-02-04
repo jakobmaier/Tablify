@@ -117,18 +117,31 @@ module Tablify {
             }
 
             if ("columns" in defDetails) {
-                for (var i = 0; i < defDetails.columns.length; ++i) {
+                if (typeof defDetails.columns === "number") {           //number
+                    defDetails.columns = makeArray(<number>defDetails.columns, null);
+                }                                                       //ColumnDefinition[]
+                for (var i = 0; i < (<ColumnDefinition[]>defDetails.columns).length; ++i) {
                     this.addColumn(defDetails.columns[i]);
                 }
             }
             if ("rows" in defDetails) {
-                var titleRowCount = defDetails.titleRowCount || 0;
-                for (var i = 0; i < defDetails.rows.length; ++i) {
-                    this.addRow(titleRowCount > i ? RowType.title : RowType.body, defDetails.rows[i]);
+                var titleRowCount = defDetails.titleRowCount || 0;      //Number of rows that should always be titleRows, regardless of possible row.rowType values
+                if (typeof defDetails.rows === "number") {              //number
+                    defDetails.rows = makeArray(<number>defDetails.rows, null);
+                }                                                       //RowDefinition[]
+                for (var i = 0; i < (<RowDescription[]>defDetails.rows).length; ++i) {
+                    if (titleRowCount > i) {
+                        this.addTitleRow(defDetails.rows[i]);
+                    } else {
+                        this.addRow(defDetails.rows[i]);
+                    }
                 }
             }
         }
         
+        
+
+
         /*
          * Returns true, if the table manages the given HTMLelement
          * @table   Selector    References a HTMLElement. If this HTMLElement is managed by this table object, true is returned
@@ -168,19 +181,23 @@ module Tablify {
         /*
          * Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
          * @target      Selector    target element
+         * @return      Table       Returns this table
          */
-        appendTo(target: Selector): void {
+        appendTo(target: Selector): Table {
             logger.log("Attaching table element.");
             this.table.appendTo(<any>target);       //cast is needed due to the use of an outdated TypeScript version within the jQuery definition
+            return this;
         }
 
         /*
          * Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
          * @target      Selector    target element
+         * @return      Table       Returns this table
          */
-        prependTo(target: Selector): void {
+        prependTo(target: Selector): Table {
             logger.log("Attaching table element.");
             this.table.prependTo(<any>target);       //cast is needed due to the use of an outdated TypeScript version within the jQuery definition
+            return this;
         }
         
         /*
@@ -210,7 +227,7 @@ module Tablify {
             if (generateMissingRows) {              //If the content contains data for non-existing rows, the rows should be generated   
                 for (var rowId in content) {
                     if (!(rowId in this.rows)) {    //This row does not exist yet      
-                        this.addRow(RowType.body, rowId);
+                        this.addRow(rowId);
                     }
                 }
             }
@@ -238,7 +255,6 @@ module Tablify {
         
         /*
          * Adds a new row to the table
-         * @rowType     RowType                 The type of the row (title, body, footer).
          * @rowDef      null / undefined        The rowId is generated automatically.
          *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
          *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
@@ -246,20 +262,21 @@ module Tablify {
          *              RowDescription          Used for deserialisation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addRow(rowType: RowType, rowDef?: RowDefinition): Row {
-            var row = new Row(this, rowType, rowDef, this.columns);
-            var rowId: string = row.rowId;
+        addRow(rowDef?: RowDefinition): Row {
+            var row = new Row(this, rowDef, this.columns);
             
-            if (rowId in this.rows) {
-                logger.error("There is already a row with the id \"" + rowId + "\".");
+            if (row.rowId in this.rows) {
+                logger.error("There is already a row with the id \"" + row.rowId + "\".");
                 return null;
             }
-            this.rows[rowId] = row;
-            switch (rowType) {
-                case RowType.title: this.titleRows.push(row);
+            this.rows[row.rowId] = row;
+            switch (row.rowType) {
+                case RowType.title:
+                    this.titleRows.push(row);
                     this.thead.append(row.generateDom());       //Add the row to the table-head
                     break;
-                case RowType.body: this.bodyRows.push(row);
+                case RowType.body:
+                    this.bodyRows.push(row);
                     this.tbody.append(row.generateDom());       //Add the row to the table-body
                     break;
                 default:    assert(false, "Invalid RowType given.");
@@ -268,14 +285,40 @@ module Tablify {
         }
 
         /*
+         * Same as "addRow", but the rowType is always a titleRow.
+         * @rowDef      RowDefinition       Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
+         * @return      Row                 Returns the newly generated Row. Returns null if the row couldn't get generated.
+         */
+        addTitleRow(rowDef?: RowDefinition): Row {
+            if (!rowDef || typeof rowDef === "string") {
+                rowDef = { rowId: <string>rowDef };
+            }
+            (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.title;
+            return this.addRow(rowDef);
+        }
+
+        /*
+         * Same as "addRow", but the rowType is always a bodyRow.
+         * @rowDef      RowDefinition       Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
+         * @return      Row                 Returns the newly generated Row. Returns null if the row couldn't get generated.
+         */
+        addBodyRow(rowDef?: RowDefinition): Row {
+            if (!rowDef || typeof rowDef === "string") {
+                rowDef = { rowId: <string>rowDef };
+            }
+            (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.body;
+            return this.addRow(rowDef);
+        }
+        
+        /*
         * Returns the position of a specific row within the table. (=index).
-        * The first title row has index 0. The first body row has index "titleRowCount".
+        * The first title row has position 0. The first body row has position "titleRowCount".
         * @identifier      string      The rowId. If the rowId doesn't existing within this table, null is being returned
         *                  Row         Row Object. If the row is not part of this table, null is being returned.
         * @return          number      Returns the index/position of the given row. If the row couldn't be found, null is returned.
         */
-        getRowIndex(identifier: string|Row): number {
-            //Todo: possible performance improvement: store the index within the Row object.
+        getRowPosition(identifier: string|Row): number {
+            //Todo: possible performance improvement: store the position within the Row object.
             var row: Row;
             if (typeof identifier === "string") {
                 row = this.rows[identifier];    
@@ -300,13 +343,13 @@ module Tablify {
         
         /*
          * Returns the position of a specific column within the table. (=index).
-         * The first (=left) column has index 0.
+         * The first (=left) column has position 0.
          * @identifier      string      The columnId. If the columnId doesn't existing within this table, null is being returned
          *                  Column      Column Object. If the column is not part of this table, null is being returned.
          * @return          number      Returns the index/position of the given column. If the column couldn't be found, null is returned.
          */
-        getColumnIndex(identifier: string|Column): number {
-            //Todo: possible performance improvement: store the index within the Column object.
+        getColumnPosition(identifier: string|Column): number {
+            //Todo: possible performance improvement: store the position within the Column object.
             var column: Column;
             if (typeof identifier === "string") {
                 column = this.columns[identifier];
@@ -342,29 +385,34 @@ module Tablify {
         /*
          * Returns the required row. A row contains all cells.
          * @identifier      string          Returns the row with the given rowId. If the id doesn't exist, null is returned
-         *                  number          Returns the row with the specified index. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, null is being returned.
-         *                                  Note that passing numbers as strings (eg. getRow("4");) will be interpreted as a rowId, rather than an index.
+         *                  number          Returns the row with the specified position. The first title-row has position 0. The first body row has the position "titleRowCount". If the position is out of bounds, null is being returned.
+         *                  Row             Returns this row if it is part of the table. Otherwise null is being returned.
+         *                                  Note that passing numbers as strings (eg. getRow("4");) will be interpreted as a rowId, rather than a position.
          * @return          Row             If the requested row exists, it will be returned. Otherwise, null is returned.
          */
-        getRow(identifier: string|number): Row {
+        getRow(identifier: string|number|Row): Row {
             if (typeof identifier === "number") {
-                if (identifier < this.titleRows.length) {                   //A titleRow should be returned
+                if (identifier < this.titleRows.length) {                           //A titleRow should be returned
                     return this.titleRows[identifier] || null;
                 }
-                return this.bodyRows[identifier - this.titleRows.length] || null;  //A bodyRow should be returned
+                return this.bodyRows[identifier - this.titleRows.length] || null;   //A bodyRow should be returned
+            }
+            if (<any>identifier instanceof Row) {
+                return ((<Row>identifier).table === this) ? <Row>identifier : null;
             }
             return this.rows[<string>identifier] || null;
         }
         
         /*
          * Removes the specified row.
-         * @identifier      string          Removes the row with the given rowId. If the id doesn't exist, false is returned
-         *                  number          Removes the row with the specified index. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, false is being returned.
-         *                  Row             Removes the given row from the table. If the row is not part of this table, null is being returned.
-         *                                  Note that passing numbers as strings (eg. removeRow("4");) will be interpreted as a rowId, rather than an index.
-         * @return          boolean         Returns true, if the row has been removed successfully. Returns false, if the specified row hasn't been found.
+         * @identifier      string          Removes the row with the given rowId.
+         *                  number          Removes the row with the specified position. The first title-row has position 0. The first body row has the position titleRowCount.
+         *                  Row             Removes the given row from the table.
+         *                                  Note that passing numbers as strings (eg. removeRow("4");) will be interpreted as a rowId, rather than a position.
+         * @return          Table           Returns this table.
+         * @throws          OperationFailedException    Is thrown if the given row does not exist or is part of another table.
          */
-        removeRow(identifier: string|number|Row): boolean {
+        removeRow(identifier: string|number|Row): Table {
             //The following two informations are needed in order to remove a column:
             var rowId: string;
             var rowIndex: number;
@@ -374,27 +422,27 @@ module Tablify {
                 if (identifier < this.titleRows.length) {   //A titleRow should be removed
                     var row = this.titleRows[identifier];
                     if (!row) {             //Index out of bounds (this check is needed in case of negative or float values)
-                        return false;
+                        throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
                     }
                     rowId = row.rowId;
                 } else {
                     var row = this.bodyRows[identifier - this.titleRows.length];
                     if (!row) {             //Index out of bounds
-                        return false;
+                        throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
                     }
                     rowId = row.rowId;
                 }
             } else if(typeof identifier === "string") {    //the rowId is given
                 rowId = identifier;
-                rowIndex = this.getRowIndex(rowId);
+                rowIndex = this.getRowPosition(rowId);
                 if (rowIndex === null) {    //rowId does not exist
-                    return false;
+                    throw new OperationFailedException("removeRow()", "A row with the rowId \"" + rowId + "\" does not exist.");;
                 }
             } else {                        //a Row has been given
                 rowId = identifier.rowId;
-                rowIndex = this.getRowIndex(identifier);
+                rowIndex = this.getRowPosition(identifier);
                 if (rowIndex === null) {    //the row is not part of this table
-                    return false;
+                    throw new OperationFailedException("removeRow()", "The given row is not part of the table.");
                 }
             }
             
@@ -406,18 +454,19 @@ module Tablify {
             } else {
                 this.bodyRows.splice(rowIndex - this.titleRows.length, 1);
             }
-            return true;
+            return this;
         }
 
         /*
          * Removes the specified column.
-         * @identifier      string          Removes the column with the given columnId. If the id doesn't exist, false is returned
-         *                  number          Removes the column with the specified index. The first (left) column has index 0. If the index is out of bounds, false is being returned.
-         *                  Column          Removes the given column from the table. If the column is not part of this table, null is being returned.
-         *                                  Note that passing numbers as strings (eg. removeColumn("4");) will be interpreted as a columnId, rather than an index.
-         * @return          boolean         Returns true, if the column has been removed successfully. Returns false, if the specified column hasn't been found.
+         * @identifier      string          Removes the column with the given columnId.
+         *                  number          Removes the column with the specified position. The first (left) column has position 0.
+         *                  Column          Removes the given column from the table.
+         *                                  Note that passing numbers as strings (eg. removeColumn("4");) will be interpreted as a columnId, rather than a position.
+         * @return          Table           Returns this table.
+         * @throws          OperationFailedException    Is thrown if the given column does not exist or is part of another table.
          */
-        removeColumn(identifier: string|number|Column): boolean {
+        removeColumn(identifier: string|number|Column): Table {
             //The following two informations are needed in order to remove a column:
             var columnId: string;
             var columnIndex: number;
@@ -426,20 +475,20 @@ module Tablify {
                 columnIndex = identifier;
                 var column = this.sortedColumns[identifier];
                 if (!column) {                  //Index out of bounds
-                    return false;
+                    throw new OperationFailedException("removeColumn()", "A column with position " + identifier + " does not exist.");
                 }
                 columnId = column.columnId;               
             } else if (typeof identifier === "string") {    //the columnId is given
                 columnId = identifier;
-                columnIndex = this.getColumnIndex(columnId);
+                columnIndex = this.getColumnPosition(columnId);
                 if (columnIndex === null) {     //columnId does not exist
-                    return false;
+                    throw new OperationFailedException("removeColumn()", "A column with the columnId \"" + columnId + "\" does not exist.");
                 }
             } else {                            //a Column has been given
                 columnId = identifier.columnId;
-                columnIndex = this.getColumnIndex(identifier);
+                columnIndex = this.getColumnPosition(identifier);
                 if (columnIndex === null) {     //the column is not part of this table
-                    return false;
+                    throw new OperationFailedException("removeColumn()", "The given column is not part of the table.");
                 }
             }
 
@@ -449,12 +498,9 @@ module Tablify {
             this.columns[columnId].destroy();   //The column is not part of the table anymore -> make it unusable
             delete this.columns[columnId];
             this.sortedColumns.splice(columnIndex, 1);
-            return true;
+            return this;
         }
-
-
-
-
+        
         /*
          * Returns all columns within the table.
          * @return      Column[]        All columns within the table. The order conforms to the output order.
@@ -466,13 +512,17 @@ module Tablify {
         /*
          * Returns the required column. The column does not contains cells.
          * @identifier      string          Returns the column with the given columnId. If the id doesn't exist, null is returned
-         *                  number          Returns the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
-         *                                  Note that passing numbers as strings (eg. getColumn("4");) will be interpreted as a columnId, rather than an index.
+         *                  number          Returns the column with the specified position. The first (left) column has position 0. If the position is out of bounds, null is being returned.
+         *                  Column          Returns this column if it is part of the table. Otherwise null is being returned.
+         *                                  Note that passing numbers as strings (eg. getColumn("4");) will be interpreted as a columnId, rather than a position.
          * @return          Column          If the requested column exists, it will be returned. Otherwise, null is returned.
          */
-        getColumn(identifier: string|number): Column {
-            if (typeof identifier === "number") {        
+        getColumn(identifier: string|number|Column): Column {
+            if (typeof identifier === "number") {    
                 return this.sortedColumns[identifier] || null;
+            }
+            if (<any>identifier instanceof Column) {
+                return ((<Column>identifier).table === this) ? <Column>identifier : null;
             }
             return this.columns[<string>identifier] || null;
         }
@@ -480,12 +530,13 @@ module Tablify {
         /*
          * Returns all cells of a sepcific column.
          * @identifier      string                      Returns the cells of the column with the given columnId. If the column doesn't exist, null is returned
-         *                  number                      Returns the cells of the column with the specified index. The first (left) column has index 0. If the index is out of bounds, null is being returned.
-         *                                              Note that passing numbers as strings (eg. getColumnCells("4");) will be interpreted as a columnId, rather than an index.
+         *                  number                      Returns the cells of the column with the specified position. The first (left) column has position 0. If the position is out of bounds, null is being returned.
+         *                  Column                      Returns the cells belonging to this column.
+         *                                              Note that passing numbers as strings (eg. getColumnCells("4");) will be interpreted as a columnId, rather than a position.
          * @return          { rowId: Cell, ... }        A list with all cells that are present within the column. The index represents the rowId. If the given column does not exist, null is being returned.
          */
-        getColumnCells(identifier: string|number): { [key: string]: Cell; } {
-            if (this.getColumn(identifier) === null) {  //The column does not exist
+        getColumnCells(identifier: string|number|Column): { [key: string]: Cell; } {
+            if (this.getColumn(identifier) === null) {  //The column does not exist in this table
                 return null;
             }
             var cells: { [key: string]: Cell; } = {};
@@ -494,18 +545,21 @@ module Tablify {
             }
             return cells;
         }
-        
+       
+
         /*
          * Returns the specified cell.
          * @rowIdentifier       string          Specifies the rowId of the cell. If the row doesn't exist, null is returned
-         *                      number          Specifies the row index of the cell. The first title-row has index 0. The first body row has the index titleRowCount. If the index is out of bounds, null is being returned.
-         *                                      Note that passing numbers as strings (eg. getCell("4", "colId");) will be interpreted as a rowId, rather than an index.
+         *                      number          Specifies the row position of the cell. The first title-row has position 0. The first body row has the position titleRowCount. If the position is out of bounds, null is being returned.
+         *                      Row             Returns the cell belonging to this row.
+         *                                      Note that passing numbers as strings (eg. getCell("4", "colId");) will be interpreted as a rowId, rather than a position.
          * @columnIdentifier    string          Specifies the columnId of the cell. If the column doesn't exist, null is returned
-         *                      number          Specifies the column index of the cell. The first (left) column has index 0. If the index is out of bounds, null is being returned.
-         *                                      Note that passing numbers as strings (eg. getCell("rowId", "4");) will be interpreted as a columnId, rather than an index.
+         *                      number          Specifies the column position of the cell. The first (left) column has position 0. If the position is out of bounds, null is being returned.
+         *                      Column          Returns the cell belonging to this column.
+         *                                      Note that passing numbers as strings (eg. getCell("rowId", "4");) will be interpreted as a columnId, rather than a position.
          * @return              Cell            The cell within the given row and column. If either the row or the column doesn't exist, null is returned.
          */
-        getCell(rowIdentifier: string|number, columnIdentifier: string|number): Cell {
+        getCell(rowIdentifier: string|number|Row, columnIdentifier: string|number|Column): Cell {
             var row = this.getRow(rowIdentifier);
             if (row === null) {
                 return null;

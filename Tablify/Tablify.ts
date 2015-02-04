@@ -13,6 +13,21 @@ module Tablify {
     "use strict";
 
     /*
+     * [Internal]
+     * Exception object that is thrown by Tablify if an operation failed.
+     * @funcName    string      Name of the function that produced this exception
+     * @message     string      Error description
+     */
+    export function OperationFailedException(funcName: string, message: string) {
+        this.name = "OperationFailedException";
+        this.message = "<Tablify: " + funcName + ">: " + message;
+        this.toString = function () {
+            return this.name + " " + this.message;
+        };       
+    }
+     
+
+    /*
      * Converts any Array or Object into a Table. Recursion is possible.
      * @object          Object      The table will have 2 rows: The first (title) row contains the key, the second (body) row the object's value.
      *                  Array       The table will have 2 rows: The first (title) row contains the array index, the second (body) row the array's value.
@@ -84,10 +99,6 @@ module Tablify {
     }
     
 
-
-
-
-
     /*
      * [Internal]
      * Checks if the given argument is an HTMLElement (type "Element").
@@ -123,6 +134,21 @@ module Tablify {
             return null;
         }
         return <JQuery>selector;
+    }
+
+    /*
+     * [Internal]
+     * Generates an array with exacly "count" fields. Each field holding the value "value". Note: no deep-copy is being performed.
+     * @count   number      Length of the array to generate
+     * @value   any         Content which will be applied to each field
+     * @return  any[]       The resulting array
+     */
+    export function makeArray(count: number, value: any): any[] {
+        var array = [];
+        for (var i = 0; i < count; ++i) {
+            array.push(value);
+        }
+        return array;
     }
 }
 

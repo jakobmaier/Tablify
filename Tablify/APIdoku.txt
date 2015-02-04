@@ -32,23 +32,25 @@ Table (Manages exacly one HTMLTableElement)
     destroy                 (): void                                                                // Destroys the Tablify Table. This object will get unusable.
 
     isPartOfDOM             (): boolean                                                             // Returns true, if the table is part of the DOM
-    appendTo                (target: Selector): void                                                // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
-    prependTo               (target: Selector): void                                                // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
+    appendTo                (target: Selector): Table                                               // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
+    prependTo               (target: Selector): Table                                               // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
     addColumn               (columnDef?: ColumnDefinition): Column                                  // Adds a new column to the table.
-    addRow                  (rowType: RowType, rowDef?: RowDefinition): Row                         // Adds a new row to the table
+    addRow                  (rowDef?: RowDefinition): Row                                           // Adds a new row to the table
+    addTitleRow             (rowDef?: RowDefinition): Row                                           // Same as "addRow", but the rowType is always a titleRow.
+    addBodyRow              (rowDef?: RowDefinition): Row                                           // Same as "addRow", but the rowType is always a bodyRow.
 
-    getRowIndex             (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
-    getColumnIndex          (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
+    getRowPosition          (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
+    getColumnPosition       (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
 
-    removeRow               (identifier: string|number|Row): boolean                                // Removes the specified row.
-    removeColumn            (identifier: string|number|Column): boolean                             // Removes the specified column.
+    removeRow               (identifier: string|number|Row): Table                                  // Removes the specified row.
+    removeColumn            (identifier: string|number|Column): Table                               // Removes the specified column.
 
     getRows                 (rowType?: RowType): Row[]                                              // Returns all rows within the table or table section (title/body)
-    getRow                  (identifier: string|number): Row                                        // Returns the required row. A row contains all cells.
+    getRow                  (identifier: string|number|Row): Row                                    // Returns the required row. A row contains all cells.
     getColumns              (): Column[]                                                            // Returns all columns within the table.
-    getColumn               (identifier: string|number): Column                                     // Returns the required column. The column does not contains cells.
-    getColumnCells          (identifier: string|number): { [key: string]: Cell; }                   // Returns all cells of a sepcific column.
+    getColumn               (identifier: string|number|Column): Column                              // Returns the required column. The column does not contains cells.
+    getColumnCells          (identifier: string|number|Column): { [key: string]: Cell; }            // Returns all cells of a sepcific column.
     getCell                 (rowIdentifier: string|number, columnIdentifier: string|number): Cell   // Returns the specified cell.
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
     getColumnCount          (): number                                                              // Returns the number of columns in the table
@@ -65,7 +67,7 @@ Row (Manages exacly one row within a Table)
     remove                  (): void                                                                // Removes the row from its table.
     equals                  (other: Row): boolean                                                   // Checks if the given row is the same as this row.
 
-    getCell                 (column: string|number): Cell                                           // Returns the cell of a sepcific column.
+    getCell                 (column: string|number|Column): Cell                                    // Returns the cell of a sepcific column.
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this row
 
     toObject                (includeContent?: boolean): RowDescription                              // Converts the Row into an object. Used for serialisation.
@@ -80,7 +82,7 @@ Column (Contains basic column Information, similar to a plain datatype)
     remove                  (): void                                                                // Removes the column from its table.
     equals                  (other: Column): boolean                                                // Checks if the given column is the same as this column.
 
-    getCell                 (row: string|number): Cell                                              // Returns the cell of a sepcific row.
+    getCell                 (row: string|number|Row): Cell                                          // Returns the cell of a sepcific row.
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this column
 
     toObject                (): ColumnDescription                                                   // Converts the Column into an object. Used for serialisation.
@@ -102,6 +104,9 @@ Tablify (module)
 
     Array.tablify           (target?: Tablify.Selector): Tablify.Table                              // shortcut for Tablify.tablify(theArray, target)
 
+Exceptions
+***********************************************************
+    OperationFailedException            Exception object that is thrown by Tablify if an operation failed.
 
 
 

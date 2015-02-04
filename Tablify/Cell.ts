@@ -105,7 +105,7 @@ module Tablify {
             if (typeof this.content === "string") {             //string
                 this.element.html(<string>this.content);
             } else {                                            //Table / JQuery
-                (<Table|JQuery>this.content).appendTo(this.element);
+                (</*Table|JQuery*/Table>this.content).appendTo(this.element);
             } 
 
             return this.element;
