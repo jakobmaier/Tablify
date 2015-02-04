@@ -11,7 +11,7 @@ module Tablify {
         private tbody: JQuery;                  //<tbody>
 
     
-        private static tableIdSequence: number = 0;     //Used to auto-generate unique ids
+    //    private static tableIdSequence: number = 0;     //Used to auto-generate unique ids
         /*[Readonly]*/ tableId: string;                 //Unique table id
        
         /*[Readonly]*/ parentCell: Cell = null;        //If this is a nested table, parentCell is the container of the table. This variable is set by the Cell. (If the table gets destroyed, the cell needs to be informed to convert Table into JQuery)
@@ -51,7 +51,7 @@ module Tablify {
             if (typeof tableDef === "string" && target) {       //The tableId has been given (2 parameters, the first one is a string)
                 this.tableId = tableDef;
             } else {
-                this.tableId = "ttid" + (++Table.tableIdSequence);
+                this.tableId = Table.getUniqueTableId();
             }
 
         //Interchange arguments, if the first parameter has been omitted:
@@ -137,11 +137,8 @@ module Tablify {
                     }
                 }
             }
-        }
-        
-        
-
-
+        }        
+     
         /*
          * Returns true, if the table manages the given HTMLelement
          * @table   Selector    References a HTMLElement. If this HTMLElement is managed by this table object, true is returned
@@ -589,7 +586,45 @@ module Tablify {
         getColumnCount(): number {
             return this.sortedColumns.length;
         }
-                
+        
+        //ID generator for tables, rows and columns:
+        private static tableIdSequence: number = 0; //Sequence for globally unique table ids
+        private rowIdSequence: number = 0;          //Sequence for table unique row ids
+        private columnIdSequence: number = 0;       //Sequence for table unique column ids
+        
+        /*
+         * Returns a new, unique id that can be used for a new table
+         * Note: This function never returns the same id multiple times. However, it does not check if there is already a table where the user assigned the exact same id manually.
+         * @return      string      Unique table id
+         */
+        static getUniqueTableId(): string {
+            return "ttid" + (++this.tableIdSequence);   //"ttid" = tablify table id
+        }
+
+        /*
+         * Returns a new, unique id that can be used for rows in this table
+         * @return      string      Unique row id
+         */
+        getUniqueRowId(): string {
+            var id;
+            do {
+                id = "trid" + (++this.rowIdSequence);
+            } while (id in this.rows);
+            return id;
+        }
+
+        /*
+         * Returns a new, unique id that can be used for columns in this table
+         * @return      string      Unique column id
+         */
+        getUniqueColumnId(): string {
+            var id;
+            do {
+                id = "tcid" + (++this.columnIdSequence);
+            } while (id in this.columns);
+            return id;
+        }
+                        
         /*
          * Converts the Table into an object. Used for serialisation.
          * Performs a deepCopy.

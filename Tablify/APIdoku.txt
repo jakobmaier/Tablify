@@ -2,7 +2,7 @@ User-API
 ########
     This documentation only contains information about the user-API.
     There might be members/functions publicy available to the user which are reserved for internal usage only - this kind of members/functions ARE NOT DOCUMENTED here and are usually marked "[Internal]".
-
+    This API will get an online representation as soon as it reached a stable state.
 
 
 
@@ -51,11 +51,17 @@ Table (Manages exacly one HTMLTableElement)
     getColumns              (): Column[]                                                            // Returns all columns within the table.
     getColumn               (identifier: string|number|Column): Column                              // Returns the required column. The column does not contains cells.
     getColumnCells          (identifier: string|number|Column): { [key: string]: Cell; }            // Returns all cells of a sepcific column.
-    getCell                 (rowIdentifier: string|number, columnIdentifier: string|number): Cell   // Returns the specified cell.
+    getCell                 (rowIdentifier: string|number|Row, columnIdentifier: string|number|Column): Cell    // Returns the specified cell.
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
     getColumnCount          (): number                                                              // Returns the number of columns in the table
 
+    static getUniqueTableId (): string                                                              // Returns a new, unique id that can be used for a new table
+    getUniqueRowId          (): string                                                              // Returns a new, unique id that can be used for rows in this table
+    getUniqueColumnId       (): string                                                              // Returns a new, unique id that can be used for columns in this table
+
     toObject                (includeContent?: boolean): TableDescription                            // Converts the Table into an object. Used for serialisation.
+
+
 
 
 
@@ -166,9 +172,6 @@ optimise "Parse HTML" events
 todo: table.destroy -> wenn die table teil einer anderen table ist, muss in der parentTable "Table" mit "jQuery" ausgetauscht werden. ==> Eventhandler
 parentCell austauschen, und stattdessen eventHandler definieren
 
-
-
-ein feld mit "other" erlauben, das auf alle felder zutrifft, die nicht in "content" gestanden sind (überschreibt den default content) -> aber nur bei der row
 
 
 

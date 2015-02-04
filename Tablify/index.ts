@@ -107,6 +107,12 @@ function generateTestTable(): Tablify.Table {
         }
         table.removeRow("temp1");
     }
+
+
+
+
+
+
     return table;
 }
 
@@ -127,14 +133,14 @@ window.onload = () => {
     var table = generateTestTable();
   
     new Tablify.Table(table.toObject(false), "#content");
-
-
-    
+        
     new Tablify.Table({
         "rows": [{
                 "content": {
                     "col1": "cell1",
-                    "col2": "cell x"
+                    "col2": {
+                        content: "cell x"
+                    }
                 },
                 "generateMissingColumns": true
             },{ "content": {

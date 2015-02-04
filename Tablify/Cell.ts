@@ -5,7 +5,7 @@ module Tablify {
 
     export class Cell {
 
-        /*[Readonly]*/ element: JQuery = null;              //References the <th>/<td>-element. If this element !== null, it does not mean that the cell is already part of the DOM
+        /*[Readonly]*/ element: JQuery = null;              //References the <th>/<td>-element.
         /*[Readonly]*/ content: CellContent;                //content of the cell.
 
 
@@ -57,8 +57,7 @@ module Tablify {
                 } 
                 /*attributes...*/ 
             }
-
-
+            
             if (<any>this.content instanceof Table) {
                 (<Table>this.content).parentCell = this;        //Inform the table that it is part of another one
             }

@@ -46,7 +46,7 @@ module Tablify {
             }
 
             this.element = null;
-            this.rowId = rowDefDetails.rowId || ("trid" + (++Row.rowIdSequence));  
+            this.rowId = rowDefDetails.rowId || this.table.getUniqueRowId();  
             this.rowType = (typeof rowDefDetails.rowType === "number") ? rowDefDetails.rowType : RowType.body;
             logger.info("Ceating new row \"" + this.rowId + "\".");
                        

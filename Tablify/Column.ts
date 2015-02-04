@@ -35,7 +35,7 @@ module Tablify {
             } else if (columnDef instanceof Column) {  //Copy-Constructor
                 logger.info("Ceating new column-copy of \"" + columnDef.columnId + "\".");
                 if (columnDef.table === this.table) {
-                    this.columnId = "tcid" + (++Column.columnIdSequence);
+                    this.columnId = this.table.getUniqueColumnId();
                 } else {
                     this.columnId = columnDef.columnId;
                 }                
@@ -46,7 +46,7 @@ module Tablify {
                 columnDefDetails = columnDef || {};
             }
 
-            this.columnId = columnDefDetails.columnId || ("tcid" + (++Column.columnIdSequence));
+            this.columnId = columnDefDetails.columnId || this.table.getUniqueColumnId();
 
             logger.info("Ceating new column \"" + this.columnId + "\".");
                        

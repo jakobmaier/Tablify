@@ -98,7 +98,6 @@ module Tablify {
         return table;
     }
     
-
     /*
      * [Internal]
      * Checks if the given argument is an HTMLElement (type "Element").
