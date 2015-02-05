@@ -43,6 +43,8 @@ module Tablify {
          * @target          string                      JQuery-Selector. Is resolved to a JQuery element (see below)
          *                  JQuery                      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
          *                  Element                     Target element. Is converted to a JQuery element (see above)
+         * @throws      OperationFailedException        Is thrown if the table couldn't get generated. This can happen if the selector doesn't find a unique DOM element.
+         *              InvalidArgumentException        Is thrown if invalid arguments have been passed
          * Note: If no target is passed, the table won't be appended to the DOM.
          * Note: Both parameters are optional. It is also possible to ommit the first parameter and only pass the target.
          * Note: If only a single string is passed, it will be interpreted as an selector rather than a tableId (A string as the first argument is always a selector).
@@ -55,8 +57,7 @@ module Tablify {
         //Interchange arguments, if the first parameter has been omitted:
             if (typeof tableDef === "string" || tableDef instanceof jQuery || isElement(tableDef)) {    //If the first parameter is a string, it will always be interpreted as a selector.
                 if (arguments.length !== 1) {
-                    logger.error("Invalid usage. The first parameter needs to be the TableDefinition, while the second parameter is the target. Both parameters can be ommited, but their order can't be interchanged.");
-                    return;
+                    throw new InvalidArgumentException("Table.constructor()", "Invalid usage. The first parameter needs to be the TableDefinition, while the second parameter is the target. Both parameters can be omitted, but their order can't be interchanged.");
                 }
                 target = <string|JQuery|Element>tableDef;
                 tableDef = null;
@@ -68,20 +69,19 @@ module Tablify {
         //Find the target for the table:    
             if (!target) {                                  //No target provided -> don't attach to DOM
                 logger.log("Creating detached table element.");
-                this.table = $("<table><thead></thead><tbody></tbody></table>");
+                this.generateDom();
             } else {
             //Find the selected element:
                 this.table = resolveUniSelector(target);
                 if (!this.table) {
-                    logger.error("Unable to find unique DOM Element with the following selector: \"" + target + "\"");
-                    return;
+                    throw new OperationFailedException("Table.constructor()", "Unable to find unique DOM Element with the following selector: \"" + target + "\"");
                 }
             //Check if the selected element can be used: 
                 if (this.table.prop("tagName") !== "TABLE") {       //Create a new table within this element
                     logger.log("Appending table element. Parent tag: ", this.table.prop("tagName"));
-                    var table = $("<table><thead></thead><tbody></tbody></table>");
-                    this.table.append(table);
-                    this.table = table;
+                    var container = this.table; 
+                    this.generateDom();
+                    container.append(this.table);
                 } else {
                     if (this.table.hasClass("tablified")) {         //Maybe the table has already been initialised with Tablify? If yes, return the already existing object and don't create a new one
                         var existingObj = tableStore.getTableByElement(this.table);     //expensive operation
@@ -91,9 +91,7 @@ module Tablify {
                         }
                     }
                     //Todo: Read the existing html-table and manage it
-                    logger.error("Not implemented yet: Tablify is currently not able to read existing HTML tables and mange them. Tables have to be created completely using Tablify.");
-                    this.table = null;
-                    return;
+                    throw new OperationFailedException("Table.constructor()", "Not implemented yet: Tablify is currently not able to read existing HTML tables and mange them. Tables have to be created completely using Tablify.");
                 }
             }    
         //The target has been found, now the table needs to be initialised:
@@ -142,6 +140,17 @@ module Tablify {
                 details = <TableDefinitionDetails|TableDescription>tableDef;
             }
             return jQuery.extend({}, Table.defaultTableDefinitionDetails, details);
+        }
+
+        /*
+         * Generates a blank new DOM representation for this table. Called by the constructor.
+         */
+        private generateDom(): void {            
+            this.table = jQuery(document.createElement("table"));
+            this.table.append(
+                document.createElement("thead"),
+                document.createElement("tbody")
+            );
         }
 
         /*
@@ -280,11 +289,11 @@ module Tablify {
             switch (row.rowType) {
                 case RowType.title:
                     this.titleRows.push(row);
-                    this.thead.append(row.generateDom());       //Add the row to the table-head
+                    this.thead.append(row.element);       //Add the row to the table-head
                     break;
                 case RowType.body:
                     this.bodyRows.push(row);
-                    this.tbody.append(row.generateDom());       //Add the row to the table-body
+                    this.tbody.append(row.element);       //Add the row to the table-body
                     break;
                 default:    assert(false, "Invalid RowType given.");
             }  
@@ -663,14 +672,4 @@ module Tablify {
           
     }
 }
-
-
-
-
-
-
-
-
-
-
 

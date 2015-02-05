@@ -24,38 +24,33 @@ module Tablify {
          *              Element                 Will be appended to the cell. The element will NOT be copied
          *              Cell                    The cell will be deep-copied.
          *              CellDescription         Used for deserialisation.
+         * @row         Column                  The row this cell belongs to
+         * @columnId    string                  The columnId of the column where this cell belongs to
+         * Note: if the arguments row and columnId are omitted, the cell will not get a DOM representation and can therefore never be added to the DOM
          */
-        constructor(cellDef?: CellDefinition) {
+        constructor(cellDef?: CellDefinition, row?: Row, columnId?: string) {
             var definition: CellDefinitionDetails = this.extractCellDefinitionDetails(cellDef);    //Convert the input into CellDefinitionDetails
-
-            //if (definition instanceof Cell) {                                       //Copy-Constructor
-            //    if (typeof definition.content === "string") {                       //string
-            //        this.content = definition.content;
-            //    } else if (<JQuery|Table>definition.content instanceof jQuery) {    //JQuery
-            //        this.content = (<JQuery>definition.content).clone(false, false);
-            //    } else {                                                            //Table
-            //        this.content = new Table(<Table>definition.content);
-            //    }  
-            //    /*attributes...*/
-            //} else {
-
-                //content can have the types  <CellContent | Element | TableDescription>, while CellContent = <string | JQuery | Table>
-                if (isElement(definition.content)) {        //Element
-                    this.content = $(definition.content);
-                } else if (typeof definition.content === "string"
+            
+            //The content can have the types  <CellContent | Element | TableDescription>, while CellContent = <string | JQuery | Table>
+            if (isElement(definition.content)) {        //Element
+                this.content = jQuery(definition.content);
+            } else if (typeof definition.content === "string"
                     || <JQuery|Table|TableDescription>definition.content instanceof jQuery
                     || <JQuery|TableDescription>      definition.content instanceof Table) {
-                    this.content = <string|JQuery|Table>definition.content;
-                } else {    //TableDescription
-                    this.content = new Table(<TableDescription>definition.content);
-                }
-                /*attributes...*/
+                this.content = <string|JQuery|Table>definition.content;
+            } else {    //TableDescription
+                this.content = new Table(<TableDescription>definition.content);
+            }
+            /*attributes...*/
 
-            //}
-            
-            
+            if (arguments.length < 3) {
+                delete this.element;                        //The cell can never get part of the DOM
+            } else {
+                this.generateDom(row.rowType, columnId);    //Generates the DOM representation of this cell.
+            }
+
             if (<any>this.content instanceof Table) {
-                (<Table>this.content).parentCell = this;        //Inform the table that it is part of another one
+                (<Table>this.content).parentCell = this;    //Inform the table that it is part of another one
             }
         }
         
@@ -83,38 +78,27 @@ module Tablify {
             //CellDescription might have the option "contentType", which has to be processed and removed from the "CellDefinitionDetails" type:
             if ((<CellDescription>details).contentType === CellContentType.jquery) {
                 assert(typeof details.content === "string");
-                details.content = $(details.content);
+                details.content = jQuery(details.content);
             }
             delete (<CellDescription>details).contentType;
             
             return jQuery.extend({}, Cell.defaultCellDefinitionDetails, details);
         }
-                
+                        
         /*
-         * [Internal]
-         * Returns a JQuery->HTMLElement, representing the Cell. This element can be attached to the DOM.
-         * @tagtype     string      Can either be "th" for title rows or "td" for body rows.
+         * Generates the DOM representation for this cell. Called by the constructor.
+         * @rowType     RowType     RowType of the row this cell belongs to. Needed to distinguish between "th" for title rows and "td" for body rows.
          * @columnId    string      Id of the corresponsing column (used as a tag attribute)
-         * @return      JQuery      Element, that can be insterted into the DOM
          */
-        generateDom(tagType: string, columnId: string): JQuery {
-            if (this.element !== null) {
-                logger.warning("Cell: generateDom has been called, although the element has already been generated before. This might be an error.");
-                return this.element;
-            }
-            assert_argumentsNotNull(arguments);
-            assert(tagType === "th" || tagType === "td", "Cells must have a \"th\" or \"td\" tagType.");
-
-            this.element = $(document.createElement(tagType));
+        private generateDom(rowType: RowType, columnId: string): void {   
+            this.element = jQuery(document.createElement(rowType===RowType.title ? "th" : "td"));
             this.element.attr("data-columnId", columnId);
             
             if (typeof this.content === "string") {             //string
                 this.element.html(<string>this.content);
             } else {                                            //Table / JQuery
                 (</*Table|JQuery*/Table>this.content).appendTo(this.element);
-            } 
-
-            return this.element;
+            }
         }
         
         /*

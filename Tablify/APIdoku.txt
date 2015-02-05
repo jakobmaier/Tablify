@@ -113,7 +113,7 @@ Tablify (module)
 Exceptions
 ***********************************************************
     OperationFailedException            Exception object that is thrown by Tablify if an operation failed.
-
+    InvalidArgumentException            Exception object that is thrown by Tablify if invalid parameters are passed.
 
 
 

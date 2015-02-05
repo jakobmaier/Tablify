@@ -25,7 +25,7 @@
          * Called, when the "Generate Table" Button is pressed
          */
         function generateTable() {
-            var descr = $("#tableDescription").val();
+            var descr = jQuery("#tableDescription").val();
             var obj;
             try{
                 obj = JSON.parse(descr);
@@ -39,7 +39,7 @@
         /*
          * Registers event handlers, so that "updateTableList()" is called everytime a new table is generated / an existing table is destroyed
          */
-        $(document).ready(function () {
+        jQuery(document).ready(function () {
             Tablify.tableStore.onTableRegistered = function (table) {
                 window.t = table;
                 updateTableList();
@@ -49,11 +49,11 @@
             };
             updateTableList();    
 
-            $("#tools textarea").focusin(function () {
-                $(this).css("height", "500%");
+            jQuery("#tools textarea").focusin(function () {
+                jQuery(this).css("height", "500%");
             });
-            $("#tools textarea").focusout(function () {
-                $(this).css("height", "");
+            jQuery("#tools textarea").focusout(function () {
+                jQuery(this).css("height", "");
             });
 
 
@@ -64,10 +64,10 @@
          * Updates the select-box's content (Is called everytime a new table is generated)
          */
         function updateTableList() {
-            $("#tableSelect").empty();
+            jQuery("#tableSelect").empty();
             var tableList = Tablify.tableStore.tableList;
             for (var i = 0; i < tableList.length; ++i) {
-                $("#tableSelect").append("<option>" + tableList[i].tableId + "</option>");
+                jQuery("#tableSelect").append("<option>" + tableList[i].tableId + "</option>");
             }
         }
 
@@ -75,11 +75,11 @@
          * Called, when the "-->" Button (Serialise button) is pressed
          */
         function serialiseTable() {
-            var tableId = $("#tableSelect").val();
+            var tableId = jQuery("#tableSelect").val();
             var table = Tablify.tableStore.getTableById(tableId);
-            var withData = $("#includeData").is(':checked');
+            var withData = jQuery("#includeData").is(':checked');
             if (table !== null) {
-                $("#tableDescription").val(JSON.stringify(table.toObject(withData), null, 4));
+                jQuery("#tableDescription").val(JSON.stringify(table.toObject(withData), null, 4));
             }
         }
     </script>

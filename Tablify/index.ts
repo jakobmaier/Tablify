@@ -34,14 +34,14 @@ function generateTestTable(): Tablify.Table {
         rowType: Tablify.RowType.title,
         content: {
             "Column 1": new Tablify.Cell("column 1"),
-            "Column 2": $("<div style='color: red'>column 2</div>").get(0),
-            "Column 3": $("<div style='color: red'>column 3</div>")
+            "Column 2": jQuery("<div style='color: red'>column 2</div>").get(0),
+            "Column 3": jQuery("<div style='color: red'>column 3</div>")
         }
     });
 
     table.addBodyRow({ rowId: "row4", rowType: Tablify.RowType.title, content: "!4!" });
-    table.addRow({ rowId: "row5", content: $("<div style='color: red'>5</div>") });
-    table.addRow({ rowId: "row6", content: $("<div style='color: red'>6</div>").get(0) });
+    table.addRow({ rowId: "row5", content: jQuery("<div style='color: red'>5</div>") });
+    table.addRow({ rowId: "row6", content: jQuery("<div style='color: red'>6</div>").get(0) });
 
     var destroyedTable = new Tablify.Table(smallTable, "#content");
 
@@ -130,6 +130,12 @@ function generateTestTable(): Tablify.Table {
 
 window.onload = () => {
     "use strict";
+
+    window["$"] = function () {
+        console.error("jQuery must not be accessed with $");
+        return null;
+    }
+
         
     var table = generateTestTable();
   

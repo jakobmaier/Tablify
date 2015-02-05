@@ -5,9 +5,9 @@ module Tablify {
 
     export class Row {
 
-        /*[Readonly]*/ table: Table;                    //The table where this row belongs to
-        /*[Readonly]*/ element: JQuery = null;          //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM        
-        /*[Readonly]*/ rowId: string;                   //internal id, unique within the table
+        /*[Readonly]*/ table: Table;                    //The table where this row belongs to.
+        /*[Readonly]*/ element: JQuery;                 //References the <tr>-element.
+        /*[Readonly]*/ rowId: string;                   //internal id, unique within the table.
         /*[Readonly]*/ rowType: RowType;                //title- / body- / footer- row
         private cells: { [key: string]: Cell; } = {}    // {columnId: Cell, ...}
         
@@ -35,9 +35,7 @@ module Tablify {
 
             this.table = table;
             var definition: RowDefinitionDetails = this.extractRowDefinitionDetails(rowDef);    //Convert the input into RowDefinitionDetails
-            
-            
-            this.element = null;
+                        
             this.rowId = definition.rowId || this.table.getUniqueRowId();
             this.rowType = definition.rowType;
             logger.info("Ceating new row \"" + this.rowId + "\".");
@@ -54,9 +52,9 @@ module Tablify {
                 var proto: Cell = null;
                 for (var columnId in columns) {                 //Generate a cell for each column
                     if (!proto) {
-                        proto = this.cells[columnId] = new Cell(definition.content);
+                        proto = this.cells[columnId] = new Cell(definition.content, this, columnId);
                     } else {
-                        this.cells[columnId] = new Cell(proto); //Copy constructor = deep copy
+                        this.cells[columnId] = new Cell(proto, this, columnId); //Copy constructor = deep copy
                     }
                 }
             } else {    //definition.content now has the type < {[key: string]: CellDefinition;} >
@@ -73,23 +71,24 @@ module Tablify {
 
                 for (var columnId in columns) {             //generate a cell for each column
                     if (columnId in cellContents) {
-                        this.cells[columnId] = new Cell(cellContents[columnId]);
+                        this.cells[columnId] = new Cell(cellContents[columnId], this, columnId);
                         continue;
                     }
                     logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
                     switch (this.rowType) {
                         case RowType.title:
-                            this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent);
+                            this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent, this, columnId);
                             break;
                         case RowType.body:
-                            this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent);
+                            this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent, this, columnId);
                             break;
                         default: assert(false, "Invalid RowType given.");
                     }
                 }
 
             }
-                     
+            
+            this.generateDom();      //Generates the DOM representation of this row.
         }
 
         /*
@@ -117,6 +116,18 @@ module Tablify {
         }
         
         /*
+         * Generates the DOM representation for this row. Called by the constructor.
+         */
+        private generateDom(): void {
+            this.element = jQuery(document.createElement("tr"));
+            this.element.attr("data-rowId", this.rowId);
+            
+            for (var columnId in this.cells) {
+                this.element.append(this.cells[columnId].element);
+            }
+        }
+
+        /*
          * [Internal]
          * Destroys the Row. This object will get unusable and members as well as member functions must not be used afterwards.
          * Note that this function does not remove the row from the DOM.
@@ -124,7 +135,7 @@ module Tablify {
         destroy(): void {
             logger.info("Deleting row \"" + this.rowId + "\".");
             this.table = null;
-            this.element = null;
+            delete this.element;
         }
         
         /*
@@ -147,24 +158,18 @@ module Tablify {
         /*
          * [Internal]
          * Adds a new column (=cell) to the row. Is called everytime a column is added to the table. Also updates DOM.
-         * @column    Column            Information about the new Column
-         * @content   CellDefinition    The cell that should be assigned to the new column. A new copy of this parameter is generated.
+         * @column    Column                    Information about the new Column
+         * @content   CellDefinition            The cell that should be assigned to the new column. A new copy of this parameter is generated.
+         * @throws    OperationFailedException  Is thrown if the column already has such a column
          */
         addColumn(column: Column, content: CellDefinition): void {
             var columnId: string = column.columnId;
             if (columnId in this.cells) {
-                logger.error("The row \""+this.rowId+"\" has already a column with the id \"" + columnId + "\".");
-                return;
+                throw new OperationFailedException("addColumn()", "The row \"" + this.rowId + "\" has already a column with the id \"" + columnId + "\".");
             }
-            var cell: Cell = new Cell(content);
-            this.cells[columnId] = cell;
-            if (this.element !== null) {
-                var cellDom: JQuery = cell.generateDom(this.rowType === RowType.title ? "th" : "td", columnId);
-                this.element.append(cellDom); 
-            } else {
-                //With the current source code layout, this shouldn't happen - rows are inserted into the DOM as soon as they're attached to the table
-                logger.warning("A column has been added to the row \"" + this.rowId + "\" and the row is not part of the DOM yet. This might be an error.");
-            }
+            var cell: Cell = new Cell(content, this, columnId);
+            this.cells[columnId] = cell;            
+            this.element.append(cell.element);      //Append the cell to the DOM
         }
 
         /*
@@ -207,26 +212,7 @@ module Tablify {
             return this.cells[<string>column] || null;
         }
                         
-        /*
-         * [Internal]
-         * Returns a JQuery->HTMLElement, representing the Row (including all cells). This element can be attached to the DOM.
-         * @return      JQuery      Element, that can be insterted into the DOM
-         */
-        generateDom(): JQuery {
-            if (this.element !== null) {
-                logger.warning("Row: generateDom has been called, altough the element has already been generated before. This might be an error.");
-                return this.element;
-            }
-           
-            var element:JQuery = $("<tr data-rowId:'" + this.rowId + "'></tr>");
-
-            for (var columnId in this.cells) {
-                var cell: JQuery = this.cells[columnId].generateDom(this.rowType === RowType.title ? "th" : "td", columnId);
-                element.append(cell);
-            }
-            this.element = element;
-            return element;
-        }
+        
                 
         /*
          * Converts the Row into an object. Used for serialisation.

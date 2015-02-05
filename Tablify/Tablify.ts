@@ -26,6 +26,19 @@ module Tablify {
         };       
     }
      
+    /*
+     * [Internal]
+     * Exception object that is thrown by Tablify if invalid parameters are passed.
+     * @funcName    string      Name of the function that produced this exception
+     * @message     string      Error description
+     */
+    export function InvalidArgumentException(funcName: string, message: string) {
+        this.name = "InvalidArgumentException";
+        this.message = "<Tablify: " + funcName + ">: " + message;
+        this.toString = function () {
+            return this.name + " " + this.message;
+        };
+    }
 
     /*
      * Converts any Array or Object into a Table. Recursion is possible.
@@ -102,7 +115,7 @@ module Tablify {
                 count++;
             }
         }
-        assert(count === $(".tablified").length);
+        assert(count === jQuery(".tablified").length);
            
         return table;
     }
@@ -132,10 +145,10 @@ module Tablify {
      */
     export function resolveUniSelector(selector: Selector): JQuery{
         if (isElement(selector)){               //Element
-            return $(selector);
+            return jQuery(selector);
         }
         if (typeof selector === "string") {     //selector
-            selector = $(selector);
+            selector = jQuery(selector);
         }
         //JQuery        
         if ((<JQuery>selector).length !== 1) {

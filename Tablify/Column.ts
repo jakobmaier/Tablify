@@ -37,24 +37,12 @@ module Tablify {
             this.table = table;
 
             var definition: ColumnDefinitionDetails = this.extractColumnDefinitionDetails(columnDef);    //Convert the input into ColumnDefinitionDetails
-            
-            //if (definition instanceof Column) {                                     //Copy-Constructor
-            //    logger.info("Ceating new column-copy of \"" + definition.columnId + "\".");
-            //    if (definition.table === this.table) {
-            //        this.columnId = this.table.getUniqueColumnId();
-            //    } else {
-            //        this.columnId = definition.columnId;
-            //    }
-            //    this.defaultTitleContent = definition.defaultTitleContent;
-            //    this.defaultBodyContent = definition.defaultBodyContent;
-            //    /*attributes...*/
-            //} else {
-                this.columnId = definition.columnId || this.table.getUniqueColumnId();
-                logger.info("Ceating new column \"" + this.columnId + "\".");
-                this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent :  this.columnId);
-                this.defaultBodyContent = new Cell(definition.defaultBodyContent !== null ? definition.defaultBodyContent : this.columnId);
-                /*attributes...*/
-            //}
+           
+            this.columnId = definition.columnId || this.table.getUniqueColumnId();
+            logger.info("Ceating new column \"" + this.columnId + "\".");
+            this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent :  this.columnId);
+            this.defaultBodyContent = new Cell(definition.defaultBodyContent !== null ? definition.defaultBodyContent : this.columnId);
+            /*attributes...*/
         }
         
         /*
