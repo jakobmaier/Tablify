@@ -94,7 +94,16 @@ module Tablify {
                 content: object.toString()
             }],
             titleRowCount: 1
-        }, target);        
+        }, target);      
+        
+        var count = 0;
+        for (var i = 0; i < Tablify.tableStore.tableList.length; ++i) {
+            if (Tablify.tableStore.tableList[i].isPartOfDOM()) {
+                count++;
+            }
+        }
+        assert(count === $(".tablified").length);
+           
         return table;
     }
     

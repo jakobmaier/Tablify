@@ -70,7 +70,7 @@ function generateTestTable(): Tablify.Table {
             }]
         });
     
-
+    Tablify.Cell.defaultCellDefinitionDetails.content = "EMPTY";
     table.addColumn({
         // columnId: "Column 4",
         defaultTitleContent: "Spalte 4",
@@ -86,6 +86,7 @@ function generateTestTable(): Tablify.Table {
         },
         generateMissingRows: true
     });
+    Tablify.Cell.defaultCellDefinitionDetails.content = "";
 
     table.addColumn("temp1");
     table.addColumn("temp2").remove();
@@ -129,7 +130,7 @@ function generateTestTable(): Tablify.Table {
 
 window.onload = () => {
     "use strict";
-    
+        
     var table = generateTestTable();
   
     new Tablify.Table(table.toObject(false), "#content");

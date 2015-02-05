@@ -4,9 +4,8 @@ module Tablify {
     "use strict";
 
     export class Column {
+        
         /*[Readonly]*/ table: Table;                    //The table where this column belongs to  
-
-        private static columnIdSequence: number = 0;    //Used to auto-generate unique ids, if the user didn't pass an Id (note that this sequence produces globally unique ids)
         /*[Readonly]*/ columnId: string;                //internal id, unique within the table
         //sortable?: boolean;
         //...
@@ -14,7 +13,15 @@ module Tablify {
         defaultTitleContent: Cell;                      //Is used for rendering title cells that have no content
         defaultBodyContent: Cell;                       //Is used for rendering body cells that have no content
         //defaultFooterContent: Cell;
+        
 
+        static defaultColumnDefinitionDetails: ColumnDefinitionDetails = {  //Default options that are used in the constructor, if the user omitted them.
+            columnId: null,
+            content: {},
+            generateMissingRows: false,
+            defaultTitleContent: null,                  //null automatically uses the columnId as default value
+            defaultBodyContent: ""
+        };
 
         /*
          * [Internal]
@@ -29,31 +36,49 @@ module Tablify {
         constructor(table: Table, columnDef?: ColumnDefinition) {
             this.table = table;
 
-            var columnDefDetails: ColumnDefinitionDetails|ColumnDescription;        
-            if (typeof columnDef === "string") {
-                columnDefDetails = { columnId: columnDef };
-            } else if (columnDef instanceof Column) {  //Copy-Constructor
-                logger.info("Ceating new column-copy of \"" + columnDef.columnId + "\".");
-                if (columnDef.table === this.table) {
-                    this.columnId = this.table.getUniqueColumnId();
-                } else {
-                    this.columnId = columnDef.columnId;
-                }                
-                this.defaultTitleContent = columnDef.defaultTitleContent;
-                this.defaultBodyContent = columnDef.defaultBodyContent;
-                return;
-            } else {                                        //null / undefined / ColumnDefinitionDetails / ColumnDescription
-                columnDefDetails = columnDef || {};
-            }
-
-            this.columnId = columnDefDetails.columnId || this.table.getUniqueColumnId();
-
-            logger.info("Ceating new column \"" + this.columnId + "\".");
-                       
-            this.defaultTitleContent = new Cell(columnDefDetails.defaultTitleContent || this.columnId);
-            this.defaultBodyContent = new Cell(columnDefDetails.defaultBodyContent);
+            var definition: ColumnDefinitionDetails = this.extractColumnDefinitionDetails(columnDef);    //Convert the input into ColumnDefinitionDetails
+            
+            //if (definition instanceof Column) {                                     //Copy-Constructor
+            //    logger.info("Ceating new column-copy of \"" + definition.columnId + "\".");
+            //    if (definition.table === this.table) {
+            //        this.columnId = this.table.getUniqueColumnId();
+            //    } else {
+            //        this.columnId = definition.columnId;
+            //    }
+            //    this.defaultTitleContent = definition.defaultTitleContent;
+            //    this.defaultBodyContent = definition.defaultBodyContent;
+            //    /*attributes...*/
+            //} else {
+                this.columnId = definition.columnId || this.table.getUniqueColumnId();
+                logger.info("Ceating new column \"" + this.columnId + "\".");
+                this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent :  this.columnId);
+                this.defaultBodyContent = new Cell(definition.defaultBodyContent !== null ? definition.defaultBodyContent : this.columnId);
+                /*attributes...*/
+            //}
         }
-
+        
+        /*
+         * Converts a <ColumnDefinition> into <ColumnDefinitionDetails> and extends the object by setting all optional properties.
+         * @columnDef   ColumnDefinition              input
+         * @return      ColumnDefinitionDetails       An object of type <ColumnDefinitionDetails>, where all optional fields are set; Note that the columnId and defaultContents might still be null.
+         */
+        private extractColumnDefinitionDetails(columnDef?: ColumnDefinition): ColumnDefinitionDetails {
+            columnDef = columnDef || {};
+            var details: ColumnDefinitionDetails = {};
+            
+            if (typeof columnDef === "string") {    //String
+                details.columnId = columnDef;
+            } else if (<ColumnDefinitionDetails|Column|ColumnDescription>columnDef instanceof Column) {   //Column
+                details = (<Column>columnDef).toObject();   //Extracts the Column description
+                if ((<Column>columnDef).table === this.table) {
+                    details.columnId = this.table.getUniqueColumnId();
+                }
+            } else {                                //<ColumnDefinitionDetails | ColumnDescription>
+                details = columnDef;
+            }
+            return jQuery.extend({}, Column.defaultColumnDefinitionDetails, details);
+        }
+        
         /*
          * [Internal]
          * Destroys the Column. This object will get unusable and members as well as member functions must not be used afterwards.

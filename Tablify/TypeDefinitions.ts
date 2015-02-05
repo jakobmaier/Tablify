@@ -10,8 +10,11 @@ module Tablify {
 
 //Serialising & Deserialising:
 //***************************************************************************************************************
+    export enum CellContentType { string = 0, jquery = 1, table = 2 }
+
     export type CellDescription = {
-        content?: string|TableDescription   //Only available if the table has been serialised WITH the data, not only metadata
+        content?: string|TableDescription;      //Only available if the table has been serialised WITH the data, not only metadata
+        contentType?: CellContentType;          //Only available if the table has been serialised WITH the data, not only metadata. This field is important for deserialisation in order to distinguish between "string" and "JQuery", which is also stored as a string
         /*attributes...*/
     }
 
@@ -20,6 +23,8 @@ module Tablify {
         defaultTitleContent?: CellDescription;
         defaultBodyContent?: CellDescription;
     };
+
+    export enum RowType { title = 0, body = 1 };
 
     export type RowDescription = {
         rowId: string;
@@ -39,7 +44,7 @@ module Tablify {
 
     
 //***************************************************************************************************************
-//C r e a t i n g   n e w   O b j e c t s :
+// C r e a t i n g   n e w   O b j e c t s :
 //***************************************************************************************************************
 
 
@@ -74,8 +79,6 @@ module Tablify {
 
 
 //Adding new Rows to an existing Table:
-    export enum RowType { title = 0, body = 1 };
-
     export type RowDefinitionDetails = {
         rowId?: string;
         rowType?: RowType;                              //default: 1 (body)
@@ -87,6 +90,7 @@ module Tablify {
     
 //Creating Tables from JSON:
     export type TableDefinitionDetails = {
+        tableId?: string;
         columns?: number|ColumnDefinition[];
         rows?: number|RowDefinition[];
         titleRowCount?: number;                         //Number of rows who are automatically interpreted as titlerows, ignoring possible "row.rowType" options. Default: 0

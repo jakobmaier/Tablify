@@ -9,6 +9,10 @@ module Tablify {
         /*[Readonly]*/ content: CellContent;                //content of the cell.
 
 
+        static defaultCellDefinitionDetails: CellDefinitionDetails = {  //Default options that are used in the constructor, if the user omitted them.
+            content: ""
+        };
+
         /*
          * [Internal]
          * Generates a new Cell
@@ -22,67 +26,70 @@ module Tablify {
          *              CellDescription         Used for deserialisation.
          */
         constructor(cellDef?: CellDefinition) {
+            var definition: CellDefinitionDetails = this.extractCellDefinitionDetails(cellDef);    //Convert the input into CellDefinitionDetails
 
-            if (!cellDef) {                             //null / undefined -> empty cell
-                this.content = "";
-            } else if (typeof cellDef === "string"      //string
-                    || cellDef instanceof jQuery        //JQuery
-                    || cellDef instanceof Table) {      //Table
-                this.content = <string|JQuery|Table>cellDef;
-            } else if (isElement(cellDef)) {            //Element
-                this.content = $(cellDef);
-            } else if (cellDef instanceof Cell) {       //Cell -> Copy-Constructor
-                if (typeof cellDef.content === "string") {              //string
-                    this.content = cellDef.content;
-                } else if (<any>cellDef.content instanceof jQuery) {    //JQuery
-                    this.content = (<JQuery>cellDef.content).clone(false, false);
-                } else {                                                //Table
-                    this.content = new Table((<Table>cellDef.content).toObject(true));
-                }  
+            //if (definition instanceof Cell) {                                       //Copy-Constructor
+            //    if (typeof definition.content === "string") {                       //string
+            //        this.content = definition.content;
+            //    } else if (<JQuery|Table>definition.content instanceof jQuery) {    //JQuery
+            //        this.content = (<JQuery>definition.content).clone(false, false);
+            //    } else {                                                            //Table
+            //        this.content = new Table(<Table>definition.content);
+            //    }  
+            //    /*attributes...*/
+            //} else {
+
+                //content can have the types  <CellContent | Element | TableDescription>, while CellContent = <string | JQuery | Table>
+                if (isElement(definition.content)) {        //Element
+                    this.content = $(definition.content);
+                } else if (typeof definition.content === "string"
+                    || <JQuery|Table|TableDescription>definition.content instanceof jQuery
+                    || <JQuery|TableDescription>      definition.content instanceof Table) {
+                    this.content = <string|JQuery|Table>definition.content;
+                } else {    //TableDescription
+                    this.content = new Table(<TableDescription>definition.content);
+                }
                 /*attributes...*/
-            } else {                                    //CellDefinitionDetails / CellDescription                                
-                // cellDef.content can have one of these types: <null|undefined|string|JQuery|Table|Element|TableDescription>
-                if (!(<CellDefinitionDetails|CellDescription>cellDef).content) {                            //null / undefined -> empty cell
-                    this.content = ""; 
-                } else if (isElement((<CellDefinitionDetails|CellDescription>cellDef).content)) {           //Element
-                    this.content = $((<CellDefinitionDetails|CellDescription>cellDef).content);
-                } else if (typeof (<CellDefinitionDetails|CellDescription>cellDef).content === "object"                                         //--> remaining: <JQuery|Table|TableDescription>
-                            && !(<JQuery|Table|TableDescription>((<CellDefinitionDetails|CellDescription>cellDef).content) instanceof jQuery)   //--> remaining: <Table|TableDescription>
-                            && !(<Table|TableDescription>((<CellDefinitionDetails|CellDescription>cellDef).content) instanceof Table)) {        //TableDescription
-                    this.content = new Table(<TableDescription>((<CellDefinitionDetails|CellDescription>cellDef).content));
 
-                    console.log("Cell content for small, inner table: ", ((<any>((<CellDefinitionDetails|CellDescription>cellDef).content)).rows[0].content));
-                } else {                                                //<string|JQuery|Table>
-                    this.content = <string|JQuery|Table>(<CellDefinitionDetails|CellDescription>cellDef).content; 
-                } 
-                /*attributes...*/ 
-            }
+            //}
+            
             
             if (<any>this.content instanceof Table) {
                 (<Table>this.content).parentCell = this;        //Inform the table that it is part of another one
             }
         }
-
+        
         /*
-         * [Internal]
-         * Constructor alternative. Makes a complete clone of the cell, and returns a new one.
-         * If the cell content is an HTML Element (JQuery) or Table, it will be copied as well.
-         * @return      Cell        completly new, deep-copied Cell that doesn't share any resources with the current cell.
+         * Converts a <CellDefinition> into <CellDefinitionDetails> and extends the object by setting all optional properties.
+         * @cellDef     CellDefinition              input
+         * @return      CellDefinitionDetails       An object of type <CellDefinitionDetails>, where all optional fields are set
          */
-        clone(): Cell {
-            //<string|JQuery|Table>
-            if (typeof this.content === "string") {                 //string - no cloning required
-                return new Cell(this.content);
-            }
-            if (<JQuery|Table>this.content instanceof jQuery) {     //JQuery
-                return new Cell((<JQuery>this.content).clone(true));
-            }
-            //Table
-            assert(<any>this.content instanceof Table);
-            console.log("Cloning a table");
-            return new Cell(new Table(<Table>this.content));
-        }
+        private extractCellDefinitionDetails(cellDef?: CellDefinition): CellDefinitionDetails {
+            cellDef = cellDef || {};
+            var details: CellDefinitionDetails = {};
 
+            //Convert primitive values into "{content: primitive}":
+            if (typeof cellDef === "string"         //string
+                || cellDef instanceof jQuery        //JQuery
+                || cellDef instanceof Table         //Table
+                || isElement(cellDef)) {            //Element
+                details.content = <string|JQuery|Table|Element>cellDef;
+            } else if (<CellDefinitionDetails|Cell|CellDescription>cellDef instanceof Cell) {   //Cell
+                details = (<Cell>cellDef).toObject(true);   //Extracts the Cell description
+            } else {                                //<CellDefinitionDetails | CellDescription>
+                details = cellDef;
+            }
+
+            //CellDescription might have the option "contentType", which has to be processed and removed from the "CellDefinitionDetails" type:
+            if ((<CellDescription>details).contentType === CellContentType.jquery) {
+                assert(typeof details.content === "string");
+                details.content = $(details.content);
+            }
+            delete (<CellDescription>details).contentType;
+            
+            return jQuery.extend({}, Cell.defaultCellDefinitionDetails, details);
+        }
+                
         /*
          * [Internal]
          * Returns a JQuery->HTMLElement, representing the Cell. This element can be attached to the DOM.
@@ -124,16 +131,18 @@ module Tablify {
             if (!includeContent) {
                 return description;
             }
-
             if (typeof this.content === "string") {             //string
                 description.content = <string>this.content;
+                description.contentType = CellContentType.string;
             } else if (<any>this.content instanceof jQuery) {   //JQuery
                 description.content = (<JQuery>this.content).get(0).outerHTML;
+                description.contentType = CellContentType.jquery;       //Is needed, so that the deserialisation process knows that the string should be converted into jQuery
             } else {                                            //Table
                 description.content = (<Table>this.content).toObject(includeContent);
+                description.contentType = CellContentType.table;
             }
-
             return description;
         }
     }        
+
 }

@@ -60,7 +60,7 @@ Table (Manages exacly one HTMLTableElement)
     getUniqueColumnId       (): string                                                              // Returns a new, unique id that can be used for columns in this table
 
     toObject                (includeContent?: boolean): TableDescription                            // Converts the Table into an object. Used for serialisation.
-
+    static defaultTableDefinitionDetails    TableDefinitionDetails                                  // Default options that are used in the constructor, if the user omitted them.
 
 
 
@@ -77,7 +77,7 @@ Row (Manages exacly one row within a Table)
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this row
 
     toObject                (includeContent?: boolean): RowDescription                              // Converts the Row into an object. Used for serialisation.
-
+    static defaultRowDefinitionDetails      RowDefinitionDetails                                    // Default options that are used in the constructor, if the user omitted them.
 
 Column (Contains basic column Information, similar to a plain datatype)
 ***********************************************************
@@ -92,14 +92,14 @@ Column (Contains basic column Information, similar to a plain datatype)
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this column
 
     toObject                (): ColumnDescription                                                   // Converts the Column into an object. Used for serialisation.
-
+    static defaultColumnDefinitionDetails   ColumnDefinitionDetails                                 // Default options that are used in the constructor, if the user omitted them.
 
 Cell
 ***********************************************************
     content                 readonly string;                                                        // content of the cell. Might contain HTML.
 
     toObject                (): CellDescription                                                     // Converts the Cell into an object. Used for serialisation.
-
+    static defaultCellDefinitionDetails     CellDefinitionDetails                                   // Default options that are used in the constructor, if the user omitted them.
 
 
 

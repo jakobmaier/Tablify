@@ -10,8 +10,6 @@ module Tablify {
         private thead: JQuery;                  //<thead>
         private tbody: JQuery;                  //<tbody>
 
-    
-    //    private static tableIdSequence: number = 0;     //Used to auto-generate unique ids
         /*[Readonly]*/ tableId: string;                 //Unique table id
        
         /*[Readonly]*/ parentCell: Cell = null;        //If this is a nested table, parentCell is the container of the table. This variable is set by the Cell. (If the table gets destroyed, the cell needs to be informed to convert Table into JQuery)
@@ -26,10 +24,15 @@ module Tablify {
         private titleRows: Row[] = [];                  //Rows, which are part of the table head. Sorted by their output order.
         private bodyRows: Row[] = [];                   //Rows, containing the data. Sorted by their output order.
         private rows: { [key: string]: Row; } = {};     //All rows, sorted by their id
- 
+         
 
-        
-        
+        static defaultTableDefinitionDetails: TableDefinitionDetails = {    //Default options that are used in the constructor, if the user omitted them.
+            tableId: null,
+            columns: [],
+            rows: [],
+            titleRowCount: 0
+        };        
+
         /*
          * Generates and returns a new Tablify Table    (Note: If the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
          * @tableDef        null/undefined              An empty table with no rows and columns will be created.
@@ -48,12 +51,7 @@ module Tablify {
         constructor(tableDef: TableDefinition, target?: Selector);
 
         constructor(tableDef?: TableDefinition|Selector, target?: Selector) {  
-            if (typeof tableDef === "string" && target) {       //The tableId has been given (2 parameters, the first one is a string)
-                this.tableId = tableDef;
-            } else {
-                this.tableId = Table.getUniqueTableId();
-            }
-
+          
         //Interchange arguments, if the first parameter has been omitted:
             if (typeof tableDef === "string" || tableDef instanceof jQuery || isElement(tableDef)) {    //If the first parameter is a string, it will always be interpreted as a selector.
                 if (arguments.length !== 1) {
@@ -63,6 +61,10 @@ module Tablify {
                 target = <string|JQuery|Element>tableDef;
                 tableDef = null;
             }
+            
+            var definition: TableDefinitionDetails = this.extractTableDefinitionDetails(tableDef);    //Convert the input into TableDefinitionDetails
+            this.tableId = definition.tableId || Table.getUniqueTableId();
+            
         //Find the target for the table:    
             if (!target) {                                  //No target provided -> don't attach to DOM
                 logger.log("Creating detached table element.");
@@ -101,44 +103,47 @@ module Tablify {
 
             this.thead = this.table.find("thead");
             this.tbody = this.table.find("tbody");
-        //Generate the table content:
-            if (!tableDef || typeof tableDef === "string") {    //No content to generate
-                return;
+        //Generate the table content:           
+            if (typeof definition.columns === "number") {           //number
+                definition.columns = makeArray(<number>definition.columns, null);
+            }                                                       //ColumnDefinition[]
+            for (var i = 0; i < (<ColumnDefinition[]>definition.columns).length; ++i) {
+                this.addColumn(definition.columns[i]);
             }
-            // <TableDefinitionDetails|Table|TableDescription>
-
-            var defDetails: TableDefinitionDetails;
-
-            if (<TableDefinitionDetails|Table|TableDescription>tableDef instanceof Table) {         //Copy-constructor
-                defDetails = (<Table>tableDef).toObject(true);
-                logger.info("Copying existing table " + (<Table>tableDef).tableId);
-            } else {
-                defDetails = <TableDefinitionDetails|TableDescription>tableDef;
-            }
-
-            if ("columns" in defDetails) {
-                if (typeof defDetails.columns === "number") {           //number
-                    defDetails.columns = makeArray(<number>defDetails.columns, null);
-                }                                                       //ColumnDefinition[]
-                for (var i = 0; i < (<ColumnDefinition[]>defDetails.columns).length; ++i) {
-                    this.addColumn(defDetails.columns[i]);
+            
+            var titleRowCount = definition.titleRowCount;           //Number of rows that should always be titleRows, regardless of possible row.rowType values
+            if (typeof definition.rows === "number") {              //number
+                definition.rows = makeArray(<number>definition.rows, null);
+            }                                                      //RowDefinition[]
+            for (var i = 0; i < (<RowDescription[]>definition.rows).length; ++i) {
+                if (titleRowCount > i) {
+                    this.addTitleRow(definition.rows[i]);
+                } else {
+                    this.addRow(definition.rows[i]);
                 }
             }
-            if ("rows" in defDetails) {
-                var titleRowCount = defDetails.titleRowCount || 0;      //Number of rows that should always be titleRows, regardless of possible row.rowType values
-                if (typeof defDetails.rows === "number") {              //number
-                    defDetails.rows = makeArray(<number>defDetails.rows, null);
-                }                                                       //RowDefinition[]
-                for (var i = 0; i < (<RowDescription[]>defDetails.rows).length; ++i) {
-                    if (titleRowCount > i) {
-                        this.addTitleRow(defDetails.rows[i]);
-                    } else {
-                        this.addRow(defDetails.rows[i]);
-                    }
-                }
-            }
+            
         }        
      
+        /*
+         * Converts a <TableDefinition> into <TableDefinitionDetails> and extends the object by setting all optional properties.
+         * @tableDef    TableDefinition              input
+         * @return      TableDefinitionDetails       An object of type <TableDefinitionDetails>, where all optional fields are set; Note that the tableId might still be null.
+         */
+        private extractTableDefinitionDetails(tableDef?: TableDefinition): TableDefinitionDetails {
+            tableDef = tableDef || {};
+            var details: TableDefinitionDetails = {};
+
+            if (typeof tableDef === "string") {     //String
+                details.tableId = tableDef;
+            } else if (<TableDefinitionDetails|Table|TableDescription>tableDef instanceof Table) {   //Table
+                details = (<Table>tableDef).toObject(true);     //Extracts the Table description
+            } else {                                //<TableDefinitionDetails | TableDescription>
+                details = <TableDefinitionDetails|TableDescription>tableDef;
+            }
+            return jQuery.extend({}, Table.defaultTableDefinitionDetails, details);
+        }
+
         /*
          * Returns true, if the table manages the given HTMLelement
          * @table   Selector    References a HTMLElement. If this HTMLElement is managed by this table object, true is returned
@@ -204,21 +209,26 @@ module Tablify {
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
          *              Column                      The column will be deep-copied.
          *              ColumnDescription           Used for deserialisation.
-         * @return      Column                      Returns the newly generated Column. Returns null if the column couldn't get generated.
+         * @return      Column                      Returns the newly generated Column.
+         * @throws      OperationFailedException    Is thrown if the column couldn't get added to the table.
          */
         addColumn(columnDef?: ColumnDefinition): Column {
             var column = new Column(this, columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
-                logger.error("There is already a column with the id \"" + columnId + "\".");
-                return null;
+                throw new OperationFailedException("addColumn()", "There is already a column with the id \"" + columnId + "\" in the table.");
             }
             
+        //Add the new column to all existing rows:
             var content: { [key: string]: CellDefinition; } = {};
             var generateMissingRows: boolean = false;
             if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails / ColumnDescription
                 content = (<ColumnDefinitionDetails>columnDef).content || {};
                 generateMissingRows = ((<ColumnDefinitionDetails>columnDef).generateMissingRows === true);
+            }
+            if (<any>columnDef instanceof Column) {         //Also copy the column's cells
+                content = (<Column>columnDef).getCells();
+                generateMissingRows = false;
             }
             
             if (generateMissingRows) {              //If the content contains data for non-existing rows, the rows should be generated   
@@ -241,7 +251,7 @@ module Tablify {
                 } else {
                     switch (row.rowType) {
                         case RowType.title: cell = column.defaultTitleContent; break;
-                        case RowType.body: cell = column.defaultBodyContent; break;
+                        case RowType.body:  cell = column.defaultBodyContent;  break;
                         default: assert(false, "Invalid RowType given.");
                     }
                 }
@@ -252,19 +262,19 @@ module Tablify {
         
         /*
          * Adds a new row to the table
-         * @rowDef      null / undefined        The rowId is generated automatically.
-         *              string                  RowId. The cells of the newly generated row will be created using the column's default values.
-         *              RowDefinitionDetails    Contains detailed information on how to generate the new row.
-         *              Row                     The row will be deep-copied.
-         *              RowDescription          Used for deserialisation.
-         * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
+         * @rowDef      null / undefined            The rowId is generated automatically.
+         *              string                      RowId. The cells of the newly generated row will be created using the column's default values.
+         *              RowDefinitionDetails        Contains detailed information on how to generate the new row.
+         *              Row                         The row will be deep-copied.
+         *              RowDescription              Used for deserialisation.
+         * @return      Row                         Returns the newly generated Row.
+         * @throws      OperationFailedException    Is thrown if the row couldn't get added to the table.
          */
         addRow(rowDef?: RowDefinition): Row {
             var row = new Row(this, rowDef, this.columns);
             
             if (row.rowId in this.rows) {
-                logger.error("There is already a row with the id \"" + row.rowId + "\".");
-                return null;
+                throw new OperationFailedException("addRow()", "There is already a row with the id \"" + row.rowId + "\" in the table.");
             }
             this.rows[row.rowId] = row;
             switch (row.rowType) {
@@ -433,7 +443,7 @@ module Tablify {
                 rowId = identifier;
                 rowIndex = this.getRowPosition(rowId);
                 if (rowIndex === null) {    //rowId does not exist
-                    throw new OperationFailedException("removeRow()", "A row with the rowId \"" + rowId + "\" does not exist.");;
+                    throw new OperationFailedException("removeRow()", "A row with the rowId \"" + rowId + "\" does not exist.");
                 }
             } else {                        //a Row has been given
                 rowId = identifier.rowId;

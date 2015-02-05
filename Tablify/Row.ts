@@ -4,15 +4,20 @@ module Tablify {
     "use strict";
 
     export class Row {
-        /*[Readonly]*/ table: Table;                    //The table where this row belongs to
 
-        /*[Readonly]*/ element: JQuery = null;          //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM
-        
-        private static rowIdSequence: number = 0;       //Used to auto-generate unique ids, if the user didn't pass an Id (note that this sequence produces globally unique ids)
+        /*[Readonly]*/ table: Table;                    //The table where this row belongs to
+        /*[Readonly]*/ element: JQuery = null;          //References the <tr>-element. If this element !== null, it does not mean that the row is already part of the DOM        
         /*[Readonly]*/ rowId: string;                   //internal id, unique within the table
         /*[Readonly]*/ rowType: RowType;                //title- / body- / footer- row
         private cells: { [key: string]: Cell; } = {}    // {columnId: Cell, ...}
+        
 
+        static defaultRowDefinitionDetails: RowDefinitionDetails = {    //Default options that are used in the constructor, if the user omitted them.
+            rowId: null,
+            rowType: RowType.body,
+            content: {},
+            generateMissingRows: false
+        };
 
         /*
          * [Internal]
@@ -27,76 +32,90 @@ module Tablify {
          */
         constructor(table: Table, rowDef: RowDefinition, columns: { [key: string]: Column; }) {
             assert(table instanceof Table && typeof columns === "object");
-            this.table = table;
-            
-            var rowDefDetails: RowDefinitionDetails;
-            if (typeof rowDef === "string") {                       //string = rowId
-                rowDefDetails = { rowId: rowDef };
-            } else if (rowDef instanceof Row) {                     //Copy-Constructor
-                logger.info("Ceating new row-copy of \"" + rowDef.rowId + "\".");
-                rowDefDetails = rowDef.toObject(true);
-                if (rowDef.table !== this.table) {
-                    rowDefDetails = { rowId: rowDef.rowId };
-                } else {
-                    rowDefDetails = {};                             //The id is generated later
-                }
-                rowDefDetails.generateMissingColumns = false;       //If the other row contains columns/cells, that our table doesn't have: Don't create the missing columns               
-            } else {                                                //null / RowDefinitionDetails / RowDescription
-                rowDefDetails = rowDef || {};
-            }
 
+            this.table = table;
+            var definition: RowDefinitionDetails = this.extractRowDefinitionDetails(rowDef);    //Convert the input into RowDefinitionDetails
+            
+            
             this.element = null;
-            this.rowId = rowDefDetails.rowId || this.table.getUniqueRowId();  
-            this.rowType = (typeof rowDefDetails.rowType === "number") ? rowDefDetails.rowType : RowType.body;
+            this.rowId = definition.rowId || this.table.getUniqueRowId();
+            this.rowType = definition.rowType;
             logger.info("Ceating new row \"" + this.rowId + "\".");
                        
-            //cellContents can have one of the following typses: <string|JQuery|Table|Element|Cell| {[key: string]:CellDefinition;}>
-            var cellContents = rowDefDetails.content || {};
-            //If each cell should be initialised with the same content, it must be cloned (deep-copy). jQuery/Elements/Tables must be cloned as well (the Cell-constructor is not capable of doing that) 
 
-            if (typeof cellContents === "string"        //string
-                || cellContents instanceof jQuery       //JQuery
-                || cellContents instanceof Table        //Table
-                || cellContents instanceof Cell         //Cell
-                || isElement(cellContents)) {           //Element
+            //definition.content can have one of the following typses: <string|JQuery|Table|Element|Cell| {[key: string]:CellDefinition;}>            
+        //Check if each cell should get the same value:
+            //If each cell should be initialised with the same content, it must be deep-copied. (jQuery/Elements/Tables must be cloned) This can be done by using the Cell copy-constr., which performs such a deep copy                    
+            if (typeof definition.content === "string"          //string
+                || <any>definition.content instanceof jQuery    //JQuery
+                || <any>definition.content instanceof Table     //Table
+                || <any>definition.content instanceof Cell      //Cell
+                || isElement(definition.content)) {             //Element
                 var proto: Cell = null;
-                for (var columnId in columns) {             //Generate a cell for each column
+                for (var columnId in columns) {                 //Generate a cell for each column
                     if (!proto) {
-                        proto = this.cells[columnId] = new Cell(cellContents);
+                        proto = this.cells[columnId] = new Cell(definition.content);
                     } else {
-                        this.cells[columnId] = proto.clone();
+                        this.cells[columnId] = new Cell(proto); //Copy constructor = deep copy
                     }
                 }
-                return;
-            } 
-           
-            //cellContents now has the type < {[key: string]: CellDefinition;} >
+            } else {    //definition.content now has the type < {[key: string]: CellDefinition;} >
+                var cellContents: { [key: string]: CellDefinition } = <{ [key: string]: CellDefinition }>definition.content;
 
-            if (rowDefDetails.generateMissingColumns === true) {    //If the content contains data for non-existing columns, the columns should be generated
-                //When a column is generated, the argument "columns" will automatically gain an additional field. This field is required in the next loop, which generates the cells for all existing columns.
-                for (var columnId in <{ [key: string]: CellDefinition; }>cellContents) {
-                    if (!(columnId in columns)) {       //This column does not exist yet                   
-                        table.addColumn(columnId);      //this row is not part of the table yet -> if we add the column, the cells of this row can't be 
+                if (definition.generateMissingColumns === true) {       //If the content contains data for non-existing columns, the columns should be generated
+                    //When a column is generated, the argument "columns" will automatically gain an additional field. This field is required in the next loop, which generates the cells for all existing columns.
+                    for (var columnId in cellContents) {
+                        if (!(columnId in columns)) {       //This column does not exist yet                   
+                            table.addColumn(columnId);      //this row is not part of the table yet -> if we add the column, the cells of this row can't be 
+                        }
                     }
                 }
-            }
-                                     
-            for (var columnId in columns) {             //generate a cell for each column
-                if (columnId in <{ [key: string]: CellDefinition; }>cellContents) {
-                    this.cells[columnId] = new Cell(cellContents[columnId]);
-                    continue;
+
+                for (var columnId in columns) {             //generate a cell for each column
+                    if (columnId in cellContents) {
+                        this.cells[columnId] = new Cell(cellContents[columnId]);
+                        continue;
+                    }
+                    logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
+                    switch (this.rowType) {
+                        case RowType.title:
+                            this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent);
+                            break;
+                        case RowType.body:
+                            this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent);
+                            break;
+                        default: assert(false, "Invalid RowType given.");
+                    }
                 }
-                logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
-                switch (this.rowType) {
-                    case RowType.title: this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent);
-                        break;
-                    case RowType.body:  this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent);
-                        break;
-                    default: assert(false, "Invalid RowType given.");
-                }                
+
             }
+                     
         }
 
+        /*
+         * Converts a <RowDefinition> into <RowDefinitionDetails> and extends the object by setting all optional properties.
+         * @columnDef   RowDefinition              input
+         * @return      RowDefinitionDetails       An object of type <RowDefinitionDetails>, where all optional fields are set. Note that the rowId might still be null.
+         */
+        private extractRowDefinitionDetails(rowDef?: RowDefinition): RowDefinitionDetails{
+            rowDef = rowDef || {};
+            var details: RowDefinitionDetails = {};
+            
+            if (typeof rowDef === "string") {    //String
+                details.rowId = rowDef;
+            } else if (<RowDefinitionDetails|Row|RowDescription>rowDef instanceof Row) {   //Row
+                details = (<Row>rowDef).toObject(true);   //Extracts the Row description
+                if ((<Row>rowDef).table === this.table) {
+                    details.rowId = this.table.getUniqueRowId();
+                }
+                details.content = (<Row>rowDef).getCells(); //Also copy the row's cells
+                details.generateMissingColumns = false;
+            } else {                            //<RowDefinitionDetails | RowDescription>
+                details = rowDef;
+            }
+            return jQuery.extend({}, Row.defaultRowDefinitionDetails, details);
+        }
+        
         /*
          * [Internal]
          * Destroys the Row. This object will get unusable and members as well as member functions must not be used afterwards.
