@@ -16,7 +16,9 @@ module Tablify {
             rowId: null,
             rowType: RowType.body,
             content: {},
-            generateMissingRows: false
+            generateMissingRows: false,
+            visible: true,
+            animate: false
         };
 
         /*
@@ -86,9 +88,11 @@ module Tablify {
                     }
                 }
 
-            }
-            
+            }            
             this.generateDom();      //Generates the DOM representation of this row.
+            if (!definition.visible) {
+                this.hide();
+            }
         }
 
         /*
@@ -232,6 +236,140 @@ module Tablify {
             return description;
         }
 
+
+
+
+
+
+        /*
+         * Returns true if the row is visible.
+         * Note: If the row is part of a detached table (table/row is not part of the DOM), false is returned
+         * Note: Elements with "visibility: hidden" or "opacity: 0" are considered visible, since they still consume space in the layout.
+         * @return      boolean     true: The row is visible; otherwise: false.
+         */
+        isVisible(): boolean {
+            return this.element.filter(":visible").length === 1;
+        }
+
+        /*
+         * Shows the row without animation
+         * Note: If there is already a show/hide animation active, it will be aborted
+         * @return      Row         This row
+         */
+        show(): Row {
+            this.stop().element.show();
+            return this;
+        }
+
+        /*
+         * Hides the row without animation
+         * Note: If there is already a show/hide animation active, it will be aborted
+         * @return      Row         This row
+         */
+        hide(): Row {
+            this.stop().element.hide();
+            return this;
+        }
+
+        /*
+         * Hides or shows the row with a sliding motion
+         * @visible     boolean     true: shows the row; false: hides the row
+         * @duration    number      Duration in milliseconds
+         *              string      "fast" = 200ms; "slow" = 600ms
+         * @options     JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function.
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row.
+         * @return      Row         This row
+         */
+        setVisibility(visible: boolean, duration?: number|string, complete?: () => void): Row;
+        setVisibility(visible: boolean, options?: JQueryAnimationOptions): Row; 
+        setVisibility(visible: boolean, duration?: number|string|JQueryAnimationOptions, complete?: () => void): Row {
+            var cells = this.element.children();       
+            this.stop();        //Finish any existing animation that might be active
+            var divs = cells.wrapInner('<div style="display: ' + (visible ? 'none' : 'block') + ';" class="tanim" />').children();            
+            
+            //rows can't be slided up/down -> wrap all cell contents within a div, and animate this div.
+            //In order to work correctly, the padding has to be moved from the cells to the divs to get animated too
+            divs.css("padding", function () { return jQuery(this).parent().css("padding"); });
+            cells.css("padding", 0);
+     
+            this.element.show();        //The row must be visible during animation, the inner divs will be animated
+
+            var options: JQueryAnimationOptions;
+            if (typeof duration === "object") {
+                options = duration;
+                complete = <() => void>options.complete;
+            } else {
+                options = {
+                    "duration": duration
+                };
+            }
+
+            var completeCounter: number = 0;
+            var self = this;
+            options.complete = function () {
+                if (++completeCounter < divs.length) {      //jQuery calls the complete function once for each element. We only want the last callback to be used
+                    return;
+                }
+                if (!visible) {    
+                    self.element.hide();                    //The row is hidden afterwards
+                }
+                cells.css("padding", function () { return jQuery(this).children().css("padding"); });    //Move the padding back to the cells
+                divs.replaceWith(function () { return jQuery(this).contents(); });                       //Unwrap the cell contents
+                if (typeof complete === "function") {
+                    complete.call(self);
+                }
+            };
+            var str = (visible ? "show" : "hide");
+
+            divs.animate({
+                height: str,
+                opacity: str,
+                'padding-top': str,
+                'padding-bottom': str,
+            }, options);
+
+            return this;
+        }
+        
+        /*
+         * Stops any active show/hide animation that is performed on this row
+         * @return      Row         This row
+         */
+        stop(): Row {
+            var cells = this.element.children();
+            cells.children(".tanim").stop(true, true);      //Finish any existing animation that might be active
+            return this;
+        }
+
+        /*
+         * Hides the row with a sliding motion
+         * @duration    number      Duration in milliseconds
+         *              string      "fast" = 200ms; "slow" = 600ms
+         * @options     JQueryAnimationOptions      Additional options for the animations For more information, take a look at jQuery's `slideUp` function
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row.
+         * @return      Row         This row
+         */
+        slideUp(duration?: number|string, complete?: () => void): Row;
+        slideUp(options?: JQueryAnimationOptions): Row;
+
+        slideUp(duration?: number|string|JQueryAnimationOptions, complete?: ()=>void): Row {            
+            return this.setVisibility(false, <any>duration, complete);
+        }
+
+        /*
+         * Shows the row with a sliding motion
+         * @duration    number      Duration in milliseconds
+         *              string      "fast" = 200ms; "slow" = 600ms
+         * @options     JQueryAnimationOptions      Additional options for the animations For more information, take a look at jQuery's `slideDown` function
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row.
+         * @return      Row         This row
+         */
+        slideDown(duration?: number|string, complete?: () => void): Row;
+        slideDown(options?: JQueryAnimationOptions): Row;
+
+        slideDown(duration?: number|string|JQueryAnimationOptions, complete?: () => void): Row {
+            return this.setVisibility(true, <any>duration, complete);
+        }
     } 
 }
 

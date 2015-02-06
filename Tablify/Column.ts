@@ -126,5 +126,152 @@ module Tablify {
                 defaultBodyContent: this.defaultBodyContent.toObject(true)
             };   
         }
+
+
+
+
+        ///*
+        // * Returns true if the column is visible.
+        // * Note: If the column is part of a detached table (table/column is not part of the DOM), false is returned
+        // * Note: Elements with "visibility: hidden" or "opacity: 0" are considered visible, since they still consume space in the layout.
+        // * @return      boolean     true: The column is visible; otherwise: false.
+        // */
+        //isVisible(): boolean {
+        //    return this.element.filter(":visible").length === 1;
+        //}
+
+        ///*
+        // * Shows the column without animation
+        // * Note: If there is already a show/hide animation active, it will be aborted
+        // * @return      Column          This column
+        // */
+        //show(): Column {
+        //    this.stop().element.show();
+        //    return this;
+        //}
+
+        ///*
+        // * Hides the column without animation
+        // * Note: If there is already a show/hide animation active, it will be aborted
+        // * @return      Column          This column
+        // */
+        //hide(): Column {
+        //    this.stop().element.hide();
+        //    return this;
+        //}
+
+         /*
+         * Hides or shows the column with a sliding motion
+         * @visible     boolean     true: shows the column; false: hides the column
+         * @duration    number      Duration in milliseconds
+         *              string      "fast" = 200ms; "slow" = 600ms
+         * @options     JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function.
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current column.
+         * @return      Column      This column
+         */
+        setVisibility(visible: boolean, duration?: number|string, complete?: () => void): Column;
+        setVisibility(visible: boolean, options?: JQueryAnimationOptions): Column; 
+        setVisibility(visible: boolean, duration?: number|string|JQueryAnimationOptions, complete?: () => void): Column {
+            var cellObjects = this.getCells();
+            this.stop();        //Finish any existing animation that might be active
+
+            //Todo: Improve the following piece of code (unneccessary bad performance):
+            var cells = jQuery("");
+            for (var rowId in cellObjects) {
+                cells = cells.add(cellObjects[rowId].element);
+            }
+                       
+            var divs = cells.wrapInner('<div style="display: ' + (visible ? 'none' : 'block') + ';" class="tanim" />').children();            
+            
+            //columns can't be slided left/right-> wrap all cell contents within a div, and animate this div.
+            //In order to work correctly, the padding has to be moved from the cells to the divs to get animated too
+            divs.css("padding", function () { return jQuery(this).parent().css("padding"); });
+            cells.css("padding", 0);
+
+            cells.show();           //The cells must be visible during animation, the inner divs will be animated
+
+            var options: JQueryAnimationOptions;
+            if (typeof duration === "object") {
+                options = duration;
+                complete = <() => void>options.complete;
+            } else {
+                options = {
+                    "duration": duration
+                };
+            }
+
+            var completeCounter: number = 0;
+            var self = this;
+            options.complete = function () {
+                if (++completeCounter < divs.length) {      //jQuery calls the complete function once for each element. We only want the last callback to be used
+                    return;
+                }
+                if (!visible) {
+                    cells.hide();                           //The cells are hidden afterwards
+                }
+                cells.css("padding", function () { return jQuery(this).children().css("padding"); });    //Move the padding back to the cells
+                divs.replaceWith(function () { return jQuery(this).contents(); });                       //Unwrap the cell contents
+                if (typeof complete === "function") {
+                    complete.call(self);
+                }
+            };
+            var str = (visible ? "show" : "hide");
+
+            divs.animate({
+                width: str,
+                opacity: str,
+                'padding-left': str,
+                'padding-right': str,
+            }, options);
+
+            return this;
+        }
+
+        /*
+        * Stops any active show/hide animation that is performed on this column
+        * @return      Column       This column
+        */
+        stop(): Column {
+            var cellObjects = this.getCells();
+            
+            //Todo: Improve the following piece of code (unneccessary bad performance):
+            var cells = jQuery("");
+            for (var rowId in cellObjects) {
+                cells = cells.add(cellObjects[rowId].element);
+            }
+            cells.children(".tanim").stop(true, true);      //Finish any existing animation that might be active
+            return this;
+        }
+
+
+        /*
+         * Hides the column with a sliding motion
+         * @duration    number      Duration in milliseconds
+         *              string      "fast" = 200ms; "slow" = 600ms
+         * @options     JQueryAnimationOptions      Additional options for the animations For more information, take a look at jQuery's `slideUp` function
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current column.
+         * @return      Column      This column
+         */
+        slideLeft(duration?: number|string, complete?: () => void): Column;
+        slideLeft(options?: JQueryAnimationOptions): Column;
+
+        slideLeft(duration?: number|string|JQueryAnimationOptions, complete?: () => void): Column {
+            return this.setVisibility(false, <any>duration, complete);
+        }
+
+        /*
+         * Shows the column with a sliding motion
+         * @duration    number      Duration in milliseconds
+         *              string      "fast" = 200ms; "slow" = 600ms
+         * @options     JQueryAnimationOptions      Additional options for the animations For more information, take a look at jQuery's `slideDown` function
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current column.
+         * @return      Column      This column
+         */
+        slideRight(duration?: number|string, complete?: () => void): Column;
+        slideRight(options?: JQueryAnimationOptions): Column;
+
+        slideRight(duration?: number|string|JQueryAnimationOptions, complete?: () => void): Column {
+            return this.setVisibility(true, <any>duration, complete);
+        }
     }
 }

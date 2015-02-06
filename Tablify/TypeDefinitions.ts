@@ -4,8 +4,15 @@ module Tablify {
     "use strict";
     
 
-    export type Selector = string|JQuery|Element;    
+    export type Selector = string | JQuery | Element;    
 
+    /* 
+    * boolean                     false: no animation; true: default animation
+    * number                      Animation duration in milliseconds
+    * string                      "fast" = 200ms; "slow" = 600ms
+    * JQueryAnimationOptions      Detailed animation options including a callback option; For more information, take a look at jQuery's `animate` 
+    */
+    export type AnimationSettings = boolean | string | number | JQueryAnimationOptions; 
 
 
 //Serialising & Deserialising:
@@ -81,9 +88,10 @@ module Tablify {
 //Adding new Rows to an existing Table:
     export type RowDefinitionDetails = {
         rowId?: string;
-        rowType?: RowType;                              //default: 1 (body)
+        rowType?: RowType;                                          //default: 1 (body)
         content?: CellContent | Element | Cell | { [key: string]: CellDefinition; };  //{ columnId: CellDefinition, ...}      If only a single CellDefinition is given, it will be used for each cell in the row
-        generateMissingColumns?: boolean                // true: if the content contains columnIds that do not yet exist, a new column will be generated; false (default): not-existing columnIds will be ignored
+        generateMissingColumns?: boolean;                           //true: if the content contains columnIds that do not yet exist, a new column will be generated; false (default): not-existing columnIds will be ignored
+        visible?: boolean;                                          //true: the row will be visible; false: the row will be added but stays invisible
     };
 
     export type RowDefinition = string | RowDefinitionDetails | Row | RowDescription;

@@ -202,11 +202,12 @@ window.onload = () => {
 
     for (var i = 0; i < contentToTablify.length; ++i) {
         Tablify.tablify(contentToTablify[i], "#content", 1);
+        jQuery("#content").append("<br>");
     }
         
     
 
-
+    window["x"] = Tablify.tableStore.getTable("ttid26");
 
 };
 

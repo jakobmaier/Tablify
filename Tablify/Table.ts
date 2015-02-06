@@ -31,7 +31,9 @@ module Tablify {
             columns: [],
             rows: [],
             titleRowCount: 0
-        };        
+        };
+        static defaultAnimation: boolean | string | number | JQueryAnimationOptions = false;    //The default value for animations. Is used when rows and columns are inserted or removed.
+
 
         /*
          * Generates and returns a new Tablify Table    (Note: If the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
@@ -276,10 +278,12 @@ module Tablify {
          *              RowDefinitionDetails        Contains detailed information on how to generate the new row.
          *              Row                         The row will be deep-copied.
          *              RowDescription              Used for deserialisation.
+         * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
+         *              AnimationSettings           Information about how to animate the insertions. false: no animation.
          * @return      Row                         Returns the newly generated Row.
          * @throws      OperationFailedException    Is thrown if the row couldn't get added to the table.
          */
-        addRow(rowDef?: RowDefinition): Row {
+        addRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
             var row = new Row(this, rowDef, this.columns);
             
             if (row.rowId in this.rows) {
@@ -296,34 +300,46 @@ module Tablify {
                     this.tbody.append(row.element);       //Add the row to the table-body
                     break;
                 default:    assert(false, "Invalid RowType given.");
-            }  
+            } 
+            console.log(rowDef);
+
+            if (animate === null || animate === undefined) {    //No value given -> default value
+                animate = Table.defaultAnimation;
+            }
+            if (animate && row.isVisible()) {
+                row.slideDown(animate);
+            }
             return row;       
         }
 
         /*
          * Same as "addRow", but the rowType is always a titleRow.
-         * @rowDef      RowDefinition       Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
-         * @return      Row                 Returns the newly generated Row. Returns null if the row couldn't get generated.
+         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
+         * @animate     null / undefined        Default options are used. The option can be changed with "Table.defaultAnimation"
+         *              AnimationSettings       Information about how to animate the insertions. false: no animation.
+         * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addTitleRow(rowDef?: RowDefinition): Row {
+        addTitleRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
             if (!rowDef || typeof rowDef === "string") {
                 rowDef = { rowId: <string>rowDef };
             }
             (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.title;
-            return this.addRow(rowDef);
+            return this.addRow(rowDef, animate);
         }
 
         /*
          * Same as "addRow", but the rowType is always a bodyRow.
-         * @rowDef      RowDefinition       Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
-         * @return      Row                 Returns the newly generated Row. Returns null if the row couldn't get generated.
+         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
+         * @animate     null / undefined        Default options are used. The option can be changed with "Table.defaultAnimation"
+         *              AnimationSettings       Information about how to animate the insertions. false: no animation.
+         * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addBodyRow(rowDef?: RowDefinition): Row {
+        addBodyRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
             if (!rowDef || typeof rowDef === "string") {
                 rowDef = { rowId: <string>rowDef };
             }
             (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.body;
-            return this.addRow(rowDef);
+            return this.addRow(rowDef, animate);
         }
         
         /*

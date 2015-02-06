@@ -36,9 +36,9 @@ Table (Manages exacly one HTMLTableElement)
     prependTo               (target: Selector): Table                                               // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
     addColumn               (columnDef?: ColumnDefinition): Column                                  // Adds a new column to the table.
-    addRow                  (rowDef?: RowDefinition): Row                                           // Adds a new row to the table
-    addTitleRow             (rowDef?: RowDefinition): Row                                           // Same as "addRow", but the rowType is always a titleRow.
-    addBodyRow              (rowDef?: RowDefinition): Row                                           // Same as "addRow", but the rowType is always a bodyRow.
+    addRow                  (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Adds a new row to the table
+    addTitleRow             (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a titleRow.
+    addBodyRow              (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a bodyRow.
 
     getRowPosition          (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
     getColumnPosition       (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
@@ -61,7 +61,7 @@ Table (Manages exacly one HTMLTableElement)
 
     toObject                (includeContent?: boolean): TableDescription                            // Converts the Table into an object. Used for serialisation.
     static defaultTableDefinitionDetails    TableDefinitionDetails                                  // Default options that are used in the constructor, if the user omitted them.
-
+    static defaultAnimation                 boolean|string|number|JQueryAnimationOptions            // The default value for animations. Is used when rows and columns are inserted or removed.
 
 
 
@@ -78,6 +78,18 @@ Row (Manages exacly one row within a Table)
 
     toObject                (includeContent?: boolean): RowDescription                              // Converts the Row into an object. Used for serialisation.
     static defaultRowDefinitionDetails      RowDefinitionDetails                                    // Default options that are used in the constructor, if the user omitted them.
+
+    isVisible               (): boolean                                                             // Returns true if the row is visible.
+    show                    (): Row                                                                 // Shows the row without animation
+    hide                    (): Row                                                                 // Hides the row without animation
+    setVisibility           (visible: boolean, duration?: number|string, onComplete?: () => void): Row          // Hides or shows the row with a sliding motion
+    setVisibility           (visible: boolean, options?: JQueryAnimationOptions): Row               // Hides or shows the row with a sliding motion
+    stop                    (): Row                                                                 // Stops any active show/hide animation that is performed on this row
+    slideUp                 (duration?: number|string, onComplete?: () => void): Row                // Hides the row with a sliding motion
+    slideUp                 (options?: JQueryAnimationOptions): Row                                 // Hides the row with a sliding motion
+    slideDown               (duration?: number|string, onComplete?: () => void): Row                // Shows the row with a sliding motion
+    slideDown               (options?: JQueryAnimationOptions): Row                                 // Shows the row with a sliding motion
+
 
 Column (Contains basic column Information, similar to a plain datatype)
 ***********************************************************
