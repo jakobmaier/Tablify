@@ -1,5 +1,4 @@
 ﻿/// <reference path="Tablify.ts" />
-
 module Tablify {
     "use strict";
 
@@ -277,7 +276,7 @@ module Tablify {
          * @duration    number      Duration in milliseconds
          *              string      "fast" = 200ms; "slow" = 600ms
          * @options     JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function.
-         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row.
+         * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row. The argument is ignored if JQueryAnimationOptions are passed.
          * @return      Row         This row
          */
         setVisibility(visible: boolean, duration?: number|string, complete?: () => void): Row;
@@ -285,48 +284,11 @@ module Tablify {
         setVisibility(visible: boolean, duration?: number|string|JQueryAnimationOptions, complete?: () => void): Row {
             var cells = this.element.children();       
             this.stop();        //Finish any existing animation that might be active
-            var divs = cells.wrapInner('<div style="display: ' + (visible ? 'none' : 'block') + ';" class="tanim" />').children();            
-            
-            //rows can't be slided up/down -> wrap all cell contents within a div, and animate this div.
-            //In order to work correctly, the padding has to be moved from the cells to the divs to get animated too
-            divs.css("padding", function () { return jQuery(this).parent().css("padding"); });
-            cells.css("padding", 0);
-     
-            this.element.show();        //The row must be visible during animation, the inner divs will be animated
 
-            var options: JQueryAnimationOptions;
-            if (typeof duration === "object") {
-                options = duration;
-                complete = <() => void>options.complete;
-            } else {
-                options = {
-                    "duration": duration
-                };
-            }
+            tableSlider(cells, visible, this, duration, complete);
 
-            var completeCounter: number = 0;
-            var self = this;
-            options.complete = function () {
-                if (++completeCounter < divs.length) {      //jQuery calls the complete function once for each element. We only want the last callback to be used
-                    return;
-                }
-                if (!visible) {    
-                    self.element.hide();                    //The row is hidden afterwards
-                }
-                cells.css("padding", function () { return jQuery(this).children().css("padding"); });    //Move the padding back to the cells
-                divs.replaceWith(function () { return jQuery(this).contents(); });                       //Unwrap the cell contents
-                if (typeof complete === "function") {
-                    complete.call(self);
-                }
-            };
-            var str = (visible ? "show" : "hide");
-
-            divs.animate({
-                height: str,
-                opacity: str,
-                'padding-top': str,
-                'padding-bottom': str,
-            }, options);
+          
+               
 
             return this;
         }
@@ -337,7 +299,13 @@ module Tablify {
          */
         stop(): Row {
             var cells = this.element.children();
-            cells.children(".tanim").stop(true, true);      //Finish any existing animation that might be active
+            
+            var divs = cells.children(".tranim");
+            if (divs.length === 0) {            //the div might not be the direct child
+                divs = cells.children().children(".tranim");
+                assert(divs.length === 0 || divs.length === this.table.getColumnCount(), "Unable to identify previously created wrapper div. Number of found divs: " + divs.length);
+            }
+            divs.stop(true, true);      //Finish any existing animation that might be active
             return this;
         }
 

@@ -206,8 +206,23 @@ window.onload = () => {
     }
         
     
-
-    window["x"] = Tablify.tableStore.getTable("ttid26");
+    console.log("Table show/hide animation test: Change the speed by setting the variable 'speed', stop the animation by setting 'stop' to true");
+    window["x"] = Tablify.tableStore.getTable("ttid2");
+    window["speed"] = 100;
+    var cs = function (idx) { window["x"].getColumn(idx).setVisibility(true, window["speed"] + Math.random() * 500, function () { ch(idx); }); }
+    var ch = function (idx) { if (window["stop"]) { return; } window["x"].getColumn(idx).setVisibility(false, window["speed"] + Math.random() * 500, function () { cs(idx); }); }
+    var rs = function (idx) { window["x"].getRow(idx).setVisibility(true, window["speed"] + Math.random() * 500, function () { rh(idx); }); }
+    var rh = function (idx) { if (window["stop"]) { return; } window["x"].getRow(idx).setVisibility(false, window["speed"] + Math.random() * 500, function () { rs(idx); }); }
+    window["stop"] = false;
+    //for (var i = 0; i < window["x"].getRowCount(); ++i) {
+    //    rh(i);
+    //}
+    //for (var i = 0; i < window["x"].getColumnCount(); ++i) {
+    //    ch(i);
+    //}
+    //setTimeout(function () {
+    //    window["stop"] = true;
+    //}, 5000);
 
 };
 

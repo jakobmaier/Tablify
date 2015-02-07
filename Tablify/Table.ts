@@ -687,5 +687,125 @@ module Tablify {
         }
           
     }
+
+
+
+    /*
+     * [Internal]
+     * Performs a sliding motion to show or hide table rows or columns
+     * @cells       JQuery      All cells (<th>, <td> elements) that belong to the row or column. These elements are being animated.
+     * @visible     boolean     true: The row/column will be slided in (shown); false: The row/column will be hidden.
+     * @context     Row|Column  The Instance where the row/column belongs to. This is needed to distinguish between row/column, and it's also needed as a this-context within the complete function
+     * @duration    number      Duration in milliseconds
+     *              string      "fast" = 200ms; "slow" = 600ms
+     * @options     JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function.
+     * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row/column. The argument is ignored if JQueryAnimationOptions are passed.
+     */
+    export function tableSlider(cells: JQuery, visible: boolean, context: Row|Column, duration?: number|string|JQueryAnimationOptions, complete?: () => void): void {
+        /*
+         * Columns and rows can't be slided by jQuery -> wrap all cell contents within a div, and animate this div.
+         * The wrapper divs are created temporarily. If a row and column animation are performed simultaneously, there will be two wrapper divs.
+         */
+       
+        var isRowAnimation: boolean;    //To distinguish - makeing an "instanceof" check all the time is inperformant
+        var wrapperClass: string;       //class for the content wrapper divs
+        var sides: [string, string];    //The two sides that are affected
+        
+        if (context instanceof Row) {
+            isRowAnimation = true;
+            wrapperClass = "tranim";        //If this class gets changed, also change it in the stop method!
+            sides = ["top", "bottom"];
+            context.element.show();         //The row must be visible during animation, the inner divs will be animated
+        } else {
+            isRowAnimation = false;
+            wrapperClass = "tcanim";        //If this class gets changed, also change it in the stop method!
+            sides = ["left", "right"];
+        }
+                
+        //Create the animation properties for jQuery
+        var properties: Object = {};
+        var animationString = (visible ? "show" : "hide");
+        properties["opacity"] = visible ? 1 : 0;//animationString;        //todo: is this correct?
+        properties["padding-" + sides[0]] = animationString;
+        properties["padding-" + sides[1]] = animationString; 
+                
+        //Create the animation options for jQuery
+        var options: JQueryAnimationOptions;
+        if (typeof duration === "object") {
+            options = duration;
+            complete = <() => void>options.complete;    //Ignore the given complete function if options have been passed.
+        } else {
+            options = {
+                "duration": duration
+            };
+        }
+        
+        //jQuery calls the complete function once for each element. We only want the last callback to be used.
+        var completeCounter: number = 0;
+
+        options.complete = function () {
+            if (++completeCounter < cells.length) {
+                return;
+            }
+            if (!visible) {
+                if (isRowAnimation) {
+                    (<Row>context).element.hide();  //The row is hidden afterwards
+                } else {
+                    cells.hide();                   //The cells are hidden afterwards
+                }
+            }
+            //Restore the padding:
+            cells.each(function () {
+                var cell = jQuery(this);
+                var div = cell.children("." + wrapperClass);
+                if (div.length === 0) {                 //the div might not be the direct child of the cell anymore (will happen if another row/column animation has been started in the meantime)
+                    div = cell.children().children("." + wrapperClass);
+                    assert(div.length === 1, "Unable to identify previously created wrapper div. Number of found divs: " + div.length);
+                }
+                cell.css("padding-" + sides[0], div.css("padding-" + sides[0]));
+                cell.css("padding-" + sides[1], div.css("padding-" + sides[1]));
+                div.replaceWith(div.contents());        //Unwrap the cell contents
+            });
+            if (typeof complete === "function") {
+                complete.call(context);
+            }
+        };
+
+        /*
+         * There's no difference between starting the animation on each cell seperately, or on starting it on all cells
+         * simultaneously by using a jQuery selector that references all cells (jQuery internally loops through the elements as well).
+         */
+        var wrapperDivs = cells.wrapInner('<div style="display: ' + (visible ? 'none' : 'block') + ';" class="' + wrapperClass + '" />').children();
+        var targetDistance: number = 0;     //The the width/height of the column/row, if it would be visible. It is max(outerWidth) / max(outerHeight).
+        var distanceProp = isRowAnimation ? "outerHeight" : "outerWidth";
+
+        wrapperDivs.each(function () {
+            var div = jQuery(this);
+            var cell = div.parent();
+            
+            //In order to work properly, the padding has to be animated as well. That requires the padding to be moved from the cells to the wrapper divs.
+            //Only the affected paddings (left/right or top/bottom) must be moved, otherwise it wouldn't work if row- and column-animations are combined.
+            for (var i = 0; i < 2; ++i) {
+                div.css("padding-" + sides[i], cell.css("padding-" + sides[i]));
+                cell.css("padding-" + sides[i], 0);
+            }
+            cell.show();    //The cells must be visible during animation, the inner wrapper divs will be animated
+
+            targetDistance = Math.max(targetDistance, div[distanceProp]());
+
+            
+        }); 
+        console.log(distanceProp);
+        if (visible) {
+            wrapperDivs[distanceProp](0);
+            properties[isRowAnimation ? "height" : "width"] = targetDistance;
+        } else {
+            wrapperDivs[distanceProp](targetDistance);
+            properties[isRowAnimation ? "height" : "width"] = 0;
+        }
+           
+
+        wrapperDivs.animate(properties, options);
+    }
 }
 
