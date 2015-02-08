@@ -11,7 +11,9 @@
     background-color: #49483E;
 }
 
-
+.tablified th, .tablified th .animationWrapper{
+    font-weight: bold;
+}
 
 .tablified table:not(.tablified) th, .tablified table:not(.tablified) td{   /*Not-tablified tables within tablified tables*/
     border: inherit;

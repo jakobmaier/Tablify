@@ -90,6 +90,7 @@ function generateTestTable(): Tablify.Table {
 
     table.addColumn("temp1");
     table.addColumn("temp2").remove();
+    table.addColumn({ columnId: "invisible", defaultBodyContent: "invisible", visible: false }, 500);
     try {
         table.removeColumn("noExistingColumn");
     } catch (e) {
@@ -100,6 +101,8 @@ function generateTestTable(): Tablify.Table {
     }
     table.addRow("temp1");
     table.addRow("temp2").remove();
+    table.addRow({ rowId: "invisible", content: "invisible", visible: false }, 500);
+    
     try {
         table.removeRow("noExistingRow");
     } catch (e) {
@@ -108,12 +111,33 @@ function generateTestTable(): Tablify.Table {
         }
         table.removeRow("temp1");
     }
+        
+    console.log("Table show/hide animation test: Change the speed by setting the variable 'speed', stop the animation by setting 'stop' to true");
+    window["speed"] = 100;
+    window["stop"] = false;
+        var cs = function (table, idx) { table.getColumn(idx).setVisibility(true, window["speed"] + Math.random() * 500, function () { ch(table, idx); }); }
+        var ch = function (table, idx) { if (window["stop"]) { return; } table.getColumn(idx).setVisibility(false, window["speed"] + Math.random() * 500, function () { cs(table, idx); }); }
+        var rs = function (table, idx) { table.getRow(idx).setVisibility(true, window["speed"] + Math.random() * 500, function () { rh(table, idx); }); }
+        var rh = function (table, idx) { if (window["stop"]) { return; } table.getRow(idx).setVisibility(false, window["speed"] + Math.random() * 500, function () { rs(table, idx); }); }
 
+    window["animate"] = function (tableId, duration) {
+        var table = tableId;
+        if (!(table instanceof Tablify.Table)) {
+            table = Tablify.tableStore.getTable(tableId);
+        }
+        for (var i = 0; i < table.getRowCount(); ++i) {
+            rh(table, i);
+        }
+        for (var i = 0; i < table.getColumnCount(); ++i) {
+            ch(table, i);
+        }
+        duration = duration || 5000;
+        setTimeout(function () {
+            window["stop"] = true;
+        }, duration);
+    };
 
-
-
-
-
+    window["animate"]("ttid17", 2500);        
     return table;
 }
 
@@ -131,6 +155,8 @@ function generateTestTable(): Tablify.Table {
 window.onload = () => {
     "use strict";
 
+    //Tablify.Table.defaultAnimation = 500;
+
     window["$"] = function () {
         console.error("jQuery must not be accessed with $");
         return null;
@@ -139,9 +165,10 @@ window.onload = () => {
         
     var table = generateTestTable();
   
-    new Tablify.Table(table.toObject(false), "#content");
+    var tableCopy = new Tablify.Table(table.toObject(false), "#content");
+    
         
-    new Tablify.Table({
+    var smallTable = new Tablify.Table({
         "rows": [{
                 "content": {
                     "col1": "cell1",
@@ -157,7 +184,7 @@ window.onload = () => {
             }
         ]
     }, "#content");
-
+    //window["animate"](smallTable);
 
     console.log("===================================================");
 
@@ -201,29 +228,11 @@ window.onload = () => {
     
 
     for (var i = 0; i < contentToTablify.length; ++i) {
-        Tablify.tablify(contentToTablify[i], "#content", 1);
+        var t = Tablify.tablify(contentToTablify[i], "#content", 1);
         jQuery("#content").append("<br>");
     }
-        
-    
-    console.log("Table show/hide animation test: Change the speed by setting the variable 'speed', stop the animation by setting 'stop' to true");
+            
     window["x"] = Tablify.tableStore.getTable("ttid2");
-    window["speed"] = 100;
-    var cs = function (idx) { window["x"].getColumn(idx).setVisibility(true, window["speed"] + Math.random() * 500, function () { ch(idx); }); }
-    var ch = function (idx) { if (window["stop"]) { return; } window["x"].getColumn(idx).setVisibility(false, window["speed"] + Math.random() * 500, function () { cs(idx); }); }
-    var rs = function (idx) { window["x"].getRow(idx).setVisibility(true, window["speed"] + Math.random() * 500, function () { rh(idx); }); }
-    var rh = function (idx) { if (window["stop"]) { return; } window["x"].getRow(idx).setVisibility(false, window["speed"] + Math.random() * 500, function () { rs(idx); }); }
-    window["stop"] = false;
-    //for (var i = 0; i < window["x"].getRowCount(); ++i) {
-    //    rh(i);
-    //}
-    //for (var i = 0; i < window["x"].getColumnCount(); ++i) {
-    //    ch(i);
-    //}
-    //setTimeout(function () {
-    //    window["stop"] = true;
-    //}, 5000);
-
 };
 
  

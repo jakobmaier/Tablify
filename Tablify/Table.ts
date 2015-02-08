@@ -108,7 +108,7 @@ module Tablify {
                 definition.columns = makeArray(<number>definition.columns, null);
             }                                                       //ColumnDefinition[]
             for (var i = 0; i < (<ColumnDefinition[]>definition.columns).length; ++i) {
-                this.addColumn(definition.columns[i]);
+                this.addColumn(definition.columns[i], false);
             }
             
             var titleRowCount = definition.titleRowCount;           //Number of rows that should always be titleRows, regardless of possible row.rowType values
@@ -117,9 +117,9 @@ module Tablify {
             }                                                      //RowDefinition[]
             for (var i = 0; i < (<RowDescription[]>definition.rows).length; ++i) {
                 if (titleRowCount > i) {
-                    this.addTitleRow(definition.rows[i]);
+                    this.addTitleRow(definition.rows[i], false);
                 } else {
-                    this.addRow(definition.rows[i]);
+                    this.addRow(definition.rows[i], false);
                 }
             }
             
@@ -220,10 +220,12 @@ module Tablify {
          *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
          *              Column                      The column will be deep-copied.
          *              ColumnDescription           Used for deserialisation.
+         * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
+         *              AnimationSettings           Information about how to animate the insertion. false: no animation.
          * @return      Column                      Returns the newly generated Column.
          * @throws      OperationFailedException    Is thrown if the column couldn't get added to the table.
          */
-        addColumn(columnDef?: ColumnDefinition): Column {
+        addColumn(columnDef?: ColumnDefinition, animate?: AnimationSettings): Column {
             var column = new Column(this, columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
@@ -268,6 +270,15 @@ module Tablify {
                 }
                 row.addColumn(column, cell);
             }
+            
+            //Animation:
+            if (animate === null || animate === undefined) {    //No value given -> default value
+                animate = Table.defaultAnimation;
+            }
+            
+            if (animate && column.isVisible()) {
+                column.slideRight(animate);
+            }
             return column;
         }
         
@@ -279,7 +290,7 @@ module Tablify {
          *              Row                         The row will be deep-copied.
          *              RowDescription              Used for deserialisation.
          * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
-         *              AnimationSettings           Information about how to animate the insertions. false: no animation.
+         *              AnimationSettings           Information about how to animate the insertion. false: no animation.
          * @return      Row                         Returns the newly generated Row.
          * @throws      OperationFailedException    Is thrown if the row couldn't get added to the table.
          */
@@ -300,9 +311,8 @@ module Tablify {
                     this.tbody.append(row.element);       //Add the row to the table-body
                     break;
                 default:    assert(false, "Invalid RowType given.");
-            } 
-            console.log(rowDef);
-
+            }
+            //Animation:
             if (animate === null || animate === undefined) {    //No value given -> default value
                 animate = Table.defaultAnimation;
             }
@@ -316,7 +326,7 @@ module Tablify {
          * Same as "addRow", but the rowType is always a titleRow.
          * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
          * @animate     null / undefined        Default options are used. The option can be changed with "Table.defaultAnimation"
-         *              AnimationSettings       Information about how to animate the insertions. false: no animation.
+         *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
         addTitleRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
@@ -331,7 +341,7 @@ module Tablify {
          * Same as "addRow", but the rowType is always a bodyRow.
          * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
          * @animate     null / undefined        Default options are used. The option can be changed with "Table.defaultAnimation"
-         *              AnimationSettings       Information about how to animate the insertions. false: no animation.
+         *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
         addBodyRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
@@ -437,28 +447,32 @@ module Tablify {
         
         /*
          * Removes the specified row.
-         * @identifier      string          Removes the row with the given rowId.
-         *                  number          Removes the row with the specified position. The first title-row has position 0. The first body row has the position titleRowCount.
-         *                  Row             Removes the given row from the table.
-         *                                  Note that passing numbers as strings (eg. removeRow("4");) will be interpreted as a rowId, rather than a position.
-         * @return          Table           Returns this table.
-         * @throws          OperationFailedException    Is thrown if the given row does not exist or is part of another table.
+         * @identifier  string                      Removes the row with the given rowId.
+         *              number                      Removes the row with the specified position. The first title-row has position 0. The first body row has the position titleRowCount.
+         *              Row                         Removes the given row from the table.
+         *                                          Note that passing numbers as strings (eg. removeRow("4");) will be interpreted as a rowId, rather than a position.
+         * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
+         *              AnimationSettings           Information about how to animate the removal. false: no animation.
+         * @return      Table                       Returns this table.
+         * @throws      OperationFailedException    Is thrown if the given row does not exist or is part of another table.
          */
-        removeRow(identifier: string|number|Row): Table {
-            //The following two informations are needed in order to remove a column:
+        removeRow(identifier: string|number|Row, animate?: AnimationSettings): Table {
+            //The following informations are needed in order to remove a row:
+            var row: Row;
             var rowId: string;
             var rowIndex: number;
 
+            //todo: as soon as the index is stored within the row, the following code can be replaced with "getRow()"
             if (typeof identifier === "number") {
                 rowIndex = identifier;
                 if (identifier < this.titleRows.length) {   //A titleRow should be removed
-                    var row = this.titleRows[identifier];
+                    row = this.titleRows[identifier];
                     if (!row) {             //Index out of bounds (this check is needed in case of negative or float values)
                         throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
                     }
                     rowId = row.rowId;
                 } else {
-                    var row = this.bodyRows[identifier - this.titleRows.length];
+                    row = this.bodyRows[identifier - this.titleRows.length];
                     if (!row) {             //Index out of bounds
                         throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
                     }
@@ -466,70 +480,111 @@ module Tablify {
                 }
             } else if(typeof identifier === "string") {    //the rowId is given
                 rowId = identifier;
-                rowIndex = this.getRowPosition(rowId);
-                if (rowIndex === null) {    //rowId does not exist
+                row = this.rows[rowId];
+                if (!row) {                 //rowId does not exist
                     throw new OperationFailedException("removeRow()", "A row with the rowId \"" + rowId + "\" does not exist.");
                 }
+                rowIndex = this.getRowPosition(row);
             } else {                        //a Row has been given
                 rowId = identifier.rowId;
                 rowIndex = this.getRowPosition(identifier);
+                row = identifier;
                 if (rowIndex === null) {    //the row is not part of this table
                     throw new OperationFailedException("removeRow()", "The given row is not part of the table.");
                 }
             }
+            var self = this;
+            var removeRowNow = function () {        //"this" will be bound the the removed Row (or to undefined, if no animation is used)
+                self.rows[rowId].element.remove();  //Remove the row from the DOM
+                row.destroy();                      //The row is not part of the table anymore -> make it unusable
+                delete self.rows[rowId];
+                if (rowIndex < self.titleRows.length) {
+                    self.titleRows.splice(rowIndex, 1);
+                } else {
+                    self.bodyRows.splice(rowIndex - self.titleRows.length, 1);
+                }
+            };
             
-            this.rows[rowId].element.remove();  //Remove the row from the DOM
-            this.rows[rowId].destroy();         //The row is not part of the table anymore -> make it unusable
-            delete this.rows[rowId];
-            if (rowIndex < this.titleRows.length) {
-                this.titleRows.splice(rowIndex, 1);
+            //Animation:
+            if (animate === null || animate === undefined) {    //No value given -> default value
+                animate = Table.defaultAnimation;
+            }
+            if (animate && row.isVisible()) {
+                var animationOptions = getJQueryAnimationOptions(animate);
+                animationOptions.complete = envelopFunctionCall(
+                    animationOptions.complete,
+                    removeRowNow
+                );
+                row.slideUp(animationOptions);
             } else {
-                this.bodyRows.splice(rowIndex - this.titleRows.length, 1);
+                removeRowNow();
             }
             return this;
         }
 
         /*
          * Removes the specified column.
-         * @identifier      string          Removes the column with the given columnId.
-         *                  number          Removes the column with the specified position. The first (left) column has position 0.
-         *                  Column          Removes the given column from the table.
-         *                                  Note that passing numbers as strings (eg. removeColumn("4");) will be interpreted as a columnId, rather than a position.
-         * @return          Table           Returns this table.
-         * @throws          OperationFailedException    Is thrown if the given column does not exist or is part of another table.
+         * @identifier  string                      Removes the column with the given columnId.
+         *              number                      Removes the column with the specified position. The first (left) column has position 0.
+         *              Column                      Removes the given column from the table.
+         *                                          Note that passing numbers as strings (eg. removeColumn("4");) will be interpreted as a columnId, rather than a position.
+         * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
+         *              AnimationSettings           Information about how to animate the removal. false: no animation.
+         * @return      Table                       Returns this table.
+         * @throws      OperationFailedException    Is thrown if the given column does not exist or is part of another table.
          */
-        removeColumn(identifier: string|number|Column): Table {
-            //The following two informations are needed in order to remove a column:
+        removeColumn(identifier: string|number|Column, animate?: AnimationSettings): Table {
+            //The following informations are needed in order to remove a column:
+            var column: Column;
             var columnId: string;
             var columnIndex: number;
 
             if (typeof identifier === "number") {
                 columnIndex = identifier;
-                var column = this.sortedColumns[identifier];
+                column = this.sortedColumns[identifier];
                 if (!column) {                  //Index out of bounds
                     throw new OperationFailedException("removeColumn()", "A column with position " + identifier + " does not exist.");
                 }
                 columnId = column.columnId;               
             } else if (typeof identifier === "string") {    //the columnId is given
                 columnId = identifier;
-                columnIndex = this.getColumnPosition(columnId);
-                if (columnIndex === null) {     //columnId does not exist
+                column = this.columns[columnId];
+                if (!column) {                  //columnId does not exist
                     throw new OperationFailedException("removeColumn()", "A column with the columnId \"" + columnId + "\" does not exist.");
                 }
+                columnIndex = this.getColumnPosition(column);                
             } else {                            //a Column has been given
+                column = identifier;
                 columnId = identifier.columnId;
                 columnIndex = this.getColumnPosition(identifier);
                 if (columnIndex === null) {     //the column is not part of this table
                     throw new OperationFailedException("removeColumn()", "The given column is not part of the table.");
                 }
             }
-
-            for (var rowId in this.rows) {      //Remove the column from the DOM
-                this.rows[rowId].removeColumn(columnId);
+            var self = this;
+            var removeColumnNow = function () {     //"this" will be bound the the removed Row (or to undefined, if no animation is used)
+                for (var rowId in self.rows) {      //Remove the column from the DOM
+                    self.rows[rowId].removeColumn(columnId);
+                }
+                column.destroy();                   //The column is not part of the table anymore -> make it unusable
+                delete self.columns[columnId];
+                self.sortedColumns.splice(columnIndex, 1);
+            };
+            
+            //Animation:
+            if (animate === null || animate === undefined) {    //No value given -> default value
+                animate = Table.defaultAnimation;
             }
-            this.columns[columnId].destroy();   //The column is not part of the table anymore -> make it unusable
-            delete this.columns[columnId];
-            this.sortedColumns.splice(columnIndex, 1);
+            if (animate && column.isVisible()) {
+                var animationOptions = getJQueryAnimationOptions(animate);
+                animationOptions.complete = envelopFunctionCall(
+                    animationOptions.complete,
+                    removeColumnNow
+                );
+                column.slideLeft(animationOptions);
+            } else {
+                removeColumnNow();
+            }
             return this;
         }
         
@@ -622,6 +677,18 @@ module Tablify {
             return this.sortedColumns.length;
         }
         
+
+        /*
+         * Stops any active show/hide animation in this and any nested table.
+         * @return      Table       This table
+         */
+        stop(): Table {
+            this.table.find(".tranim, .tcanim").stop(true, true);
+            return this;
+        }
+
+
+
         //ID generator for tables, rows and columns:
         private static tableIdSequence: number = 0; //Sequence for globally unique table ids
         private rowIdSequence: number = 0;          //Sequence for table unique row ids
@@ -687,125 +754,6 @@ module Tablify {
         }
           
     }
-
-
-
-    /*
-     * [Internal]
-     * Performs a sliding motion to show or hide table rows or columns
-     * @cells       JQuery      All cells (<th>, <td> elements) that belong to the row or column. These elements are being animated.
-     * @visible     boolean     true: The row/column will be slided in (shown); false: The row/column will be hidden.
-     * @context     Row|Column  The Instance where the row/column belongs to. This is needed to distinguish between row/column, and it's also needed as a this-context within the complete function
-     * @duration    number      Duration in milliseconds
-     *              string      "fast" = 200ms; "slow" = 600ms
-     * @options     JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function.
-     * @complete    function    Callbackfunction which is called after the animation completed. "this" will be bound to the current row/column. The argument is ignored if JQueryAnimationOptions are passed.
-     */
-    export function tableSlider(cells: JQuery, visible: boolean, context: Row|Column, duration?: number|string|JQueryAnimationOptions, complete?: () => void): void {
-        /*
-         * Columns and rows can't be slided by jQuery -> wrap all cell contents within a div, and animate this div.
-         * The wrapper divs are created temporarily. If a row and column animation are performed simultaneously, there will be two wrapper divs.
-         */
-       
-        var isRowAnimation: boolean;    //To distinguish - makeing an "instanceof" check all the time is inperformant
-        var wrapperClass: string;       //class for the content wrapper divs
-        var sides: [string, string];    //The two sides that are affected
-        
-        if (context instanceof Row) {
-            isRowAnimation = true;
-            wrapperClass = "tranim";        //If this class gets changed, also change it in the stop method!
-            sides = ["top", "bottom"];
-            context.element.show();         //The row must be visible during animation, the inner divs will be animated
-        } else {
-            isRowAnimation = false;
-            wrapperClass = "tcanim";        //If this class gets changed, also change it in the stop method!
-            sides = ["left", "right"];
-        }
-                
-        //Create the animation properties for jQuery
-        var properties: Object = {};
-        var animationString = (visible ? "show" : "hide");
-        properties["opacity"] = visible ? 1 : 0;//animationString;        //todo: is this correct?
-        properties["padding-" + sides[0]] = animationString;
-        properties["padding-" + sides[1]] = animationString; 
-                
-        //Create the animation options for jQuery
-        var options: JQueryAnimationOptions;
-        if (typeof duration === "object") {
-            options = duration;
-            complete = <() => void>options.complete;    //Ignore the given complete function if options have been passed.
-        } else {
-            options = {
-                "duration": duration
-            };
-        }
-        
-        //jQuery calls the complete function once for each element. We only want the last callback to be used.
-        var completeCounter: number = 0;
-
-        options.complete = function () {
-            if (++completeCounter < cells.length) {
-                return;
-            }
-            if (!visible) {
-                if (isRowAnimation) {
-                    (<Row>context).element.hide();  //The row is hidden afterwards
-                } else {
-                    cells.hide();                   //The cells are hidden afterwards
-                }
-            }
-            //Restore the padding:
-            cells.each(function () {
-                var cell = jQuery(this);
-                var div = cell.children("." + wrapperClass);
-                if (div.length === 0) {                 //the div might not be the direct child of the cell anymore (will happen if another row/column animation has been started in the meantime)
-                    div = cell.children().children("." + wrapperClass);
-                    assert(div.length === 1, "Unable to identify previously created wrapper div. Number of found divs: " + div.length);
-                }
-                cell.css("padding-" + sides[0], div.css("padding-" + sides[0]));
-                cell.css("padding-" + sides[1], div.css("padding-" + sides[1]));
-                div.replaceWith(div.contents());        //Unwrap the cell contents
-            });
-            if (typeof complete === "function") {
-                complete.call(context);
-            }
-        };
-
-        /*
-         * There's no difference between starting the animation on each cell seperately, or on starting it on all cells
-         * simultaneously by using a jQuery selector that references all cells (jQuery internally loops through the elements as well).
-         */
-        var wrapperDivs = cells.wrapInner('<div style="display: ' + (visible ? 'none' : 'block') + ';" class="' + wrapperClass + '" />').children();
-        var targetDistance: number = 0;     //The the width/height of the column/row, if it would be visible. It is max(outerWidth) / max(outerHeight).
-        var distanceProp = isRowAnimation ? "outerHeight" : "outerWidth";
-
-        wrapperDivs.each(function () {
-            var div = jQuery(this);
-            var cell = div.parent();
-            
-            //In order to work properly, the padding has to be animated as well. That requires the padding to be moved from the cells to the wrapper divs.
-            //Only the affected paddings (left/right or top/bottom) must be moved, otherwise it wouldn't work if row- and column-animations are combined.
-            for (var i = 0; i < 2; ++i) {
-                div.css("padding-" + sides[i], cell.css("padding-" + sides[i]));
-                cell.css("padding-" + sides[i], 0);
-            }
-            cell.show();    //The cells must be visible during animation, the inner wrapper divs will be animated
-
-            targetDistance = Math.max(targetDistance, div[distanceProp]());
-
-            
-        }); 
-        console.log(distanceProp);
-        if (visible) {
-            wrapperDivs[distanceProp](0);
-            properties[isRowAnimation ? "height" : "width"] = targetDistance;
-        } else {
-            wrapperDivs[distanceProp](targetDistance);
-            properties[isRowAnimation ? "height" : "width"] = 0;
-        }
-           
-
-        wrapperDivs.animate(properties, options);
-    }
+    
 }
 

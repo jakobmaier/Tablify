@@ -4,8 +4,7 @@
 module Tablify {
     "use strict";
 
-    export class Column {
-        
+    export class Column {        
         /*[Readonly]*/ table: Table;                    //The table where this column belongs to  
         /*[Readonly]*/ columnId: string;                //internal id, unique within the table
         //sortable?: boolean;
@@ -14,14 +13,16 @@ module Tablify {
         defaultTitleContent: Cell;                      //Is used for rendering title cells that have no content
         defaultBodyContent: Cell;                       //Is used for rendering body cells that have no content
         //defaultFooterContent: Cell;
-        
+
+        private visible: boolean;                       //true: the row is visible
 
         static defaultColumnDefinitionDetails: ColumnDefinitionDetails = {  //Default options that are used in the constructor, if the user omitted them.
             columnId: null,
             content: {},
             generateMissingRows: false,
             defaultTitleContent: null,                  //null automatically uses the columnId as default value
-            defaultBodyContent: ""
+            defaultBodyContent: "",
+            visible: true
         };
 
         /*
@@ -43,6 +44,7 @@ module Tablify {
             logger.info("Ceating new column \"" + this.columnId + "\".");
             this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent :  this.columnId);
             this.defaultBodyContent = new Cell(definition.defaultBodyContent !== null ? definition.defaultBodyContent : this.columnId);
+            this.visible = definition.visible
             /*attributes...*/
         }
         
@@ -63,7 +65,7 @@ module Tablify {
                     details.columnId = this.table.getUniqueColumnId();
                 }
             } else {                                //<ColumnDefinitionDetails | ColumnDescription>
-                details = columnDef;
+                details = <ColumnDefinitionDetails|ColumnDescription>columnDef;
             }
             return jQuery.extend({}, Column.defaultColumnDefinitionDetails, details);
         }
@@ -114,20 +116,11 @@ module Tablify {
         getCells(): { [key: string]: Cell; } {
             return this.table.getColumnCells(this.columnId);
         }
-        
+                
         /*
-         * Converts the Column into an object. Used for serialisation.
-         * Performs a deepCopy.
-         * @return  ColumnDescription      DeepCopy of this column
+         * Returns all <th>/<td> elements that belong to this column.
+         * @return      JQuery
          */
-        toObject(): ColumnDescription {
-            return {
-                columnId: this.columnId,
-                defaultTitleContent: this.defaultTitleContent.toObject(true),
-                defaultBodyContent: this.defaultBodyContent.toObject(true)
-            };   
-        }
-        
         private getElements(): JQuery {
             var cellObjects = this.getCells();
             //Todo: Improve the following piece of code (unneccessary bad performance):
@@ -138,15 +131,14 @@ module Tablify {
             return cells;
         }
 
-        ///*
-        // * Returns true if the column is visible.
-        // * Note: If the column is part of a detached table (table/column is not part of the DOM), false is returned
-        // * Note: Elements with "visibility: hidden" or "opacity: 0" are considered visible, since they still consume space in the layout.
-        // * @return      boolean     true: The column is visible; otherwise: false.
-        // */
-        //isVisible(): boolean {
-        //    return this.element.filter(":visible").length === 1;
-        //}
+        /*
+         * Returns true if the column is visible.
+         * Note: This function only returns the internal state. Columns therefore must only be shown/hidden with the methods provided by the API.
+         * @return      boolean     true: The column is visible; otherwise: false.
+         */
+        isVisible(): boolean {
+            return this.visible;
+        }
 
         /*
          * Shows the column without animation
@@ -155,6 +147,7 @@ module Tablify {
          */
         show(): Column {
             this.stop().getElements().show();
+            this.visible = true;
             return this;
         }
 
@@ -165,6 +158,7 @@ module Tablify {
          */
         hide(): Column {
             this.stop().getElements().hide();
+            this.visible = false;
             return this;
         }
         
@@ -181,8 +175,17 @@ module Tablify {
         setVisibility(visible: boolean, options?: JQueryAnimationOptions): Column; 
         setVisibility(visible: boolean, duration?: number|string|JQueryAnimationOptions, complete?: () => void): Column {
             var cells = this.getElements();
+            var self = this;
             this.stop();        //Finish any existing animation that might be active
-            tableSlider(cells, visible, this, duration, complete);  
+            var animationOptions = getJQueryAnimationOptions(<any>duration, complete);
+            animationOptions.complete = envelopFunctionCall(
+                function () {
+                    assert(this === self, "The context of the callback function should be bound to the column.");
+                    self.visible = visible;
+                },
+                animationOptions.complete
+            );           
+            tableSlider(cells, visible, this, animationOptions);  
             return this;
         }
 
@@ -192,12 +195,7 @@ module Tablify {
         */
         stop(): Column {
             var cells = this.getElements();
-            var divs = cells.children(".tcanim");
-            if (divs.length === 0) {            //the div might not be the direct child
-                divs = cells.children().children(".tcanim");
-                assert(divs.length === 0 || divs.length === this.table.getRowCount(), "Unable to identify previously created wrapper div. Number of found divs: " + divs.length);
-            }
-            divs.stop(true, true);      //Finish any existing animation that might be active
+            stopAnimation(cells, this);     //Finish any existing animation that might be active
             return this;
         }
         
@@ -229,6 +227,20 @@ module Tablify {
 
         slideRight(duration?: number|string|JQueryAnimationOptions, complete?: () => void): Column {
             return this.setVisibility(true, <any>duration, complete);
+        }
+
+        /*
+         * Converts the Column into an object. Used for serialisation.
+         * Performs a deepCopy.
+         * @return  ColumnDescription      DeepCopy of this column
+         */
+        toObject(): ColumnDescription {
+            return {
+                columnId: this.columnId,
+                defaultTitleContent: this.defaultTitleContent.toObject(true),
+                defaultBodyContent: this.defaultBodyContent.toObject(true),
+                visible: this.visible
+            };
         }
     }
 }

@@ -3,14 +3,14 @@ module Tablify {
     "use strict";
 
     export class Row {
-
         /*[Readonly]*/ table: Table;                    //The table where this row belongs to.
         /*[Readonly]*/ element: JQuery;                 //References the <tr>-element.
         /*[Readonly]*/ rowId: string;                   //internal id, unique within the table.
         /*[Readonly]*/ rowType: RowType;                //title- / body- / footer- row
         private cells: { [key: string]: Cell; } = {}    // {columnId: Cell, ...}
         
-
+        private visible: boolean;                       //true: the row is visible
+        
         static defaultRowDefinitionDetails: RowDefinitionDetails = {    //Default options that are used in the constructor, if the user omitted them.
             rowId: null,
             rowType: RowType.body,
@@ -41,7 +41,6 @@ module Tablify {
             this.rowType = definition.rowType;
             logger.info("Ceating new row \"" + this.rowId + "\".");
                        
-
             //definition.content can have one of the following typses: <string|JQuery|Table|Element|Cell| {[key: string]:CellDefinition;}>            
         //Check if each cell should get the same value:
             //If each cell should be initialised with the same content, it must be deep-copied. (jQuery/Elements/Tables must be cloned) This can be done by using the Cell copy-constr., which performs such a deep copy                    
@@ -56,6 +55,9 @@ module Tablify {
                         proto = this.cells[columnId] = new Cell(definition.content, this, columnId);
                     } else {
                         this.cells[columnId] = new Cell(proto, this, columnId); //Copy constructor = deep copy
+                    }
+                    if (!columns[columnId].isVisible()) {       //The column is currently not visible -> don't show the cell
+                        this.cells[columnId].element.hide();
                     }
                 }
             } else {    //definition.content now has the type < {[key: string]: CellDefinition;} >
@@ -73,23 +75,28 @@ module Tablify {
                 for (var columnId in columns) {             //generate a cell for each column
                     if (columnId in cellContents) {
                         this.cells[columnId] = new Cell(cellContents[columnId], this, columnId);
-                        continue;
+                    } else {
+                        logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
+                        switch (this.rowType) {
+                            case RowType.title:
+                                this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent, this, columnId);
+                                break;
+                            case RowType.body:
+                                this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent, this, columnId);
+                                break;
+                            default: assert(false, "Invalid RowType given.");
+                        }
                     }
-                    logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
-                    switch (this.rowType) {
-                        case RowType.title:
-                            this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent, this, columnId);
-                            break;
-                        case RowType.body:
-                            this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent, this, columnId);
-                            break;
-                        default: assert(false, "Invalid RowType given.");
+                    if (!columns[columnId].isVisible()) {   //The column is currently not visible -> don't show the cell
+                        this.cells[columnId].element.hide();
                     }
                 }
 
             }            
+            this.visible = definition.visible
             this.generateDom();      //Generates the DOM representation of this row.
-            if (!definition.visible) {
+            /*attributes...*/
+            if (!this.visible) {
                 this.hide();
             }
         }
@@ -113,7 +120,7 @@ module Tablify {
                 details.content = (<Row>rowDef).getCells(); //Also copy the row's cells
                 details.generateMissingColumns = false;
             } else {                            //<RowDefinitionDetails | RowDescription>
-                details = rowDef;
+                details = <RowDefinitionDetails|RowDescription>rowDef;
             }
             return jQuery.extend({}, Row.defaultRowDefinitionDetails, details);
         }
@@ -172,6 +179,11 @@ module Tablify {
             }
             var cell: Cell = new Cell(content, this, columnId);
             this.cells[columnId] = cell;            
+
+            if (!column.isVisible()) {              //The column is currently not visible -> don't show the cell
+                cell.element.hide();
+            }
+
             this.element.append(cell.element);      //Append the cell to the DOM
         }
 
@@ -214,40 +226,14 @@ module Tablify {
             }
             return this.cells[<string>column] || null;
         }
-                        
-        
-                
-        /*
-         * Converts the Row into an object. Used for serialisation.
-         * Performs a deepCopy.
-         * @includeContent      boolean             true (default): The data is included in the object as well. Otherwise, the returned object only contains meta data. 
-         * @return              RowDescription      DeepCopy of this row
-         */
-        toObject(includeContent?: boolean): RowDescription{
-            var description : RowDescription = {
-                rowId: this.rowId,
-                rowType: this.rowType,
-                content: {}
-            };
-            for (var columnId in this.cells) {
-                description.content[columnId] = this.cells[columnId].toObject(includeContent);
-            }
-            return description;
-        }
-
-
-
-
-
-
+            
         /*
          * Returns true if the row is visible.
-         * Note: If the row is part of a detached table (table/row is not part of the DOM), false is returned
-         * Note: Elements with "visibility: hidden" or "opacity: 0" are considered visible, since they still consume space in the layout.
+         * Note: This function only returns the internal state. Rows therefore must only be shown/hidden with the methods provided by the API.
          * @return      boolean     true: The row is visible; otherwise: false.
          */
         isVisible(): boolean {
-            return this.element.filter(":visible").length === 1;
+            return this.visible;
         }
 
         /*
@@ -257,6 +243,7 @@ module Tablify {
          */
         show(): Row {
             this.stop().element.show();
+            this.visible = true;
             return this;
         }
 
@@ -267,6 +254,7 @@ module Tablify {
          */
         hide(): Row {
             this.stop().element.hide();
+            this.visible = false;
             return this;
         }
 
@@ -281,31 +269,37 @@ module Tablify {
          */
         setVisibility(visible: boolean, duration?: number|string, complete?: () => void): Row;
         setVisibility(visible: boolean, options?: JQueryAnimationOptions): Row; 
+
         setVisibility(visible: boolean, duration?: number|string|JQueryAnimationOptions, complete?: () => void): Row {
-            var cells = this.element.children();       
+            var cells = jQuery("");
+            //Todo: maybe this function can be improved:
+            for (var columnId in this.cells) {
+                if (this.table.getColumn(columnId).isVisible()) {
+                    cells = cells.add(this.cells[columnId].element);
+                }
+            }
+              
+            var self = this;
             this.stop();        //Finish any existing animation that might be active
-
-            tableSlider(cells, visible, this, duration, complete);
-
-          
-               
-
+            var animationOptions = getJQueryAnimationOptions(<any>duration, complete);
+            animationOptions.complete = envelopFunctionCall(
+                function () {
+                    assert(this === self, "The context of the callback function should be bound to the row.");
+                    self.visible = visible;
+                },
+                animationOptions.complete
+            );            
+            tableSlider(cells, visible, this, animationOptions);
             return this;
         }
-        
+          
         /*
          * Stops any active show/hide animation that is performed on this row
          * @return      Row         This row
          */
         stop(): Row {
             var cells = this.element.children();
-            
-            var divs = cells.children(".tranim");
-            if (divs.length === 0) {            //the div might not be the direct child
-                divs = cells.children().children(".tranim");
-                assert(divs.length === 0 || divs.length === this.table.getColumnCount(), "Unable to identify previously created wrapper div. Number of found divs: " + divs.length);
-            }
-            divs.stop(true, true);      //Finish any existing animation that might be active
+            stopAnimation(cells, this);     //Finish any existing animation that might be active
             return this;
         }
 
@@ -337,6 +331,25 @@ module Tablify {
 
         slideDown(duration?: number|string|JQueryAnimationOptions, complete?: () => void): Row {
             return this.setVisibility(true, <any>duration, complete);
+        }
+                
+        /*
+         * Converts the Row into an object. Used for serialisation.
+         * Performs a deepCopy.
+         * @includeContent      boolean             true (default): The data is included in the object as well. Otherwise, the returned object only contains meta data. 
+         * @return              RowDescription      DeepCopy of this row
+         */
+        toObject(includeContent?: boolean): RowDescription {
+            var description: RowDescription = {
+                rowId: this.rowId,
+                rowType: this.rowType,
+                content: {},
+                visible: this.visible
+            };
+            for (var columnId in this.cells) {
+                description.content[columnId] = this.cells[columnId].toObject(includeContent);
+            }
+            return description;
         }
     } 
 }

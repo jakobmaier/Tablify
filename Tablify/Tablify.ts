@@ -171,7 +171,189 @@ module Tablify {
         }
         return array;
     }
+
+
+
+    /*
+     * [Internal]
+     * Surrounds a function call with another function, which is either called before or afterwards. Can be usefull for wrapping callback functions.
+     * Creates a new function, which calls "firstFunc" and then "lastFunc". Both functions get the same arguments.
+     * @firstFunc       Function    Is called first. The arguments are passed on. When no function is passed, it will be ignored.
+     * @lastFunc        Function    Is called afterwards. The arguments are passed on. When no function is passed, it will be ignored.
+     * @context         any         Gets bound to "this" in both passed functions. If the argument is omitted, "this" won't get modified.
+     * @return          Function    New function that calls both given functions.
+     */
+    export function envelopFunctionCall(firstFunc: Function, lastFunc: Function, context?: any): Function {
+        return function () {
+            if (arguments.length < 3) {
+                context = this;
+            }
+            if (jQuery.isFunction(firstFunc)) {
+                firstFunc.apply(context, arguments);
+            }
+            if (jQuery.isFunction(lastFunc)) {
+                lastFunc.apply(context, arguments);
+            }
+        };
+    }
+    
+    /*
+     * [Internal]
+     * Converts the given parameters into a JQueryAnimationOptions object
+     * @duration    number                      Duration in milliseconds
+     *              string                      "fast" = 200ms; "slow" = 600ms
+     * @options     JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function. The object is returnd directly. 
+     * @complete    function                    Callbackfunction which is called after the animation completed. The argument is ignored if JQueryAnimationOptions are passed.
+     * @return      JQueryAnimationOptions
+     */
+    export function getJQueryAnimationOptions(duration: number | string, complete?: () => void): JQueryAnimationOptions;
+    export function getJQueryAnimationOptions(options: JQueryAnimationOptions): JQueryAnimationOptions;
+
+    export function getJQueryAnimationOptions(duration: number | string | JQueryAnimationOptions, complete?: () => void): JQueryAnimationOptions {
+        //Create the animation options for jQuery
+        var options: JQueryAnimationOptions;
+        if (typeof duration === "object") {     //Animation options have been given
+            options = duration;
+        } else {
+            options = {
+                "duration": duration,
+                "complete": complete
+            };
+        }
+        return options;
+    }
+
+    /*
+     * [Internal]
+     * Performs a sliding motion to show or hide table rows or columns
+     * @cells               JQuery                      All cells (<th>, <td> elements) that belong to the row or column. These elements are being animated.
+     * @visible             boolean                     true: The row/column will be slided in (shown); false: The row/column will be hidden.
+     * @context             Row|Column                  The Instance where the row/column belongs to. This is needed to distinguish between row/column, and it's also needed as a this-context within the complete function     
+     * @animationOptions    JQueryAnimationOptions      Additional options for the animation. For more information, take a look at jQuery's `animate` function.
+     *                                                  When "animationOptions.complete()" is called,  "this" will be bound to the context (row/column).
+     */
+    export function tableSlider(cells: JQuery, visible: boolean, context: Row|Column, animationOptions?: JQueryAnimationOptions): void {
+        /*
+         * Table cells can't be slided correctly -> each cell content needs to be wrapped within a temporary wrapper div which is then animated.
+         * When the width decreases during the animation, the cell content might start wrapping, resulting in sudden height changed. 
+         * To avoid this, there needs to be a second wrapper div within the animated one. The size of this div needs to be set to the content's width.
+         * Moreover, during animation, the cell must not have any padding. The padding is therefore removed from the cell and instead added to the inner wrapper div.
+         *      cell -> wrapperDiv -> innerWrapper -> content
+         *                  ^ animated    ^ contains cell padding
+         * The wrapper divs are created temporarily. If a row and column animation are performed simultaneously, there will be 4 wrapper divs.
+         */
+        var isRowAnimation: boolean;        //To distinguish the type - making an "instanceof" check all the time is inperformant
+        var wrapperClass: string;           //class for the content wrapper divs (row and column animations need different classes)
+        var sides: [string, string];        //The two sides which are affected        
+        if (context instanceof Row) {
+            isRowAnimation = true;
+            wrapperClass = "tranim";        //If this class gets changed, also change it in the stop() method!
+            sides = ["top", "bottom"];
+            context.element.show();         //The row must be visible during the animation, the inner wrapperDivs will be animated
+        } else {
+            isRowAnimation = false;
+            wrapperClass = "tcanim";        //If this class gets changed, also change it in the stop() method!
+            sides = ["left", "right"];
+        }                     
+        
+        //Prepare the complete function    
+        //    jQuery calls the complete function once per animated element. We are only interested in the last callback.
+        var completeCounter: number = 0;
+        var userCallback = animationOptions.complete;
+        animationOptions.complete =
+            function () {
+                if (++completeCounter < cells.length) {
+                    return;
+                }
+                if (!visible) {
+                    if (isRowAnimation) {
+                        (<Row>context).element.hide();  //The row is hidden afterwards
+                    } else {
+                        cells.hide();                   //The cells are hidden afterwards
+                    }
+                }
+                //Restore the table:
+                cells.each(function () {
+                    var cell = jQuery(this);
+                    var div = cell.children("." + wrapperClass);
+                    if (div.length === 0) {             //the outer div might not be the direct child of the cell anymore (will happen if another row/column animation has been started in the meantime)
+                        div = cell.children().children().children("." + wrapperClass);
+                    }
+                    var inner = div.children();
+                    //Restore the cell padding:
+                    cell.css("padding-" + sides[0], inner.css("padding-" + sides[0]));
+                    cell.css("padding-" + sides[1], inner.css("padding-" + sides[1]));
+                    //Unwrap the cell contents:                    
+                    div.replaceWith(inner.contents());
+                });
+                if (jQuery.isFunction(userCallback)) {
+                    userCallback.call(context);
+                }
+            };
+        
+        //Wrap the cells
+        var wrapperDivs = cells.wrapInner('<div style="display: ' + (visible ? 'none' : 'block') + ';" class="' + wrapperClass + '" />').children();
+        var innerWrapper = wrapperDivs.wrapInner('<div class="animationWrapper" />').children();
+        var visibleSize: number = 0;     //The the width/height of the column/row, if it would be visible. It is max(outerWidth) / max(outerHeight).
+        var distanceProp = isRowAnimation ? "outerHeight" : "outerWidth";
+
+        innerWrapper.each(function () {
+            var inner = jQuery(this);       //this div will get the cell's padding
+            var outer = inner.parent();     //this div will be animated
+            var cell = outer.parent();     
+            cell.show();
+            //In order to work properly, the padding has to be removed from the cell. It will instead be added to the inner wrapper div.
+            for (var i = 0; i < 2; ++i) {
+                inner.css("padding-" + sides[i], cell.css("padding-" + sides[i]));
+                cell.css("padding-" + sides[i], 0);
+            }
+            //It seems that if rows are shown, and a cell's content is smaller than the cell, it's cut in half. The following line would fix this. However it would destroy the layout when showing the column that contains the tallest cell.
+            //if (!isRowAnimation) {
+            //    inner.height(cell.height() + parseInt(cell.css("border-bottom-width"), 10));   //Don't ask me why that's required. Just leave it where it is and don't touch it.
+            //}
+            visibleSize = Math.max(visibleSize, outer[distanceProp]());
+        });
+
+        //Create the animation properties for jQuery
+        var properties: Object = {};
+        properties["opacity"] = visible ? "show" : "hide";
+
+        innerWrapper[distanceProp](visibleSize);    //Set the size of the inner wrapper to the cell size - this avoids word wrapping when the width is decreased
+        if (visible) {
+            wrapperDivs[distanceProp](0);
+            properties[isRowAnimation ? "height" : "width"] = visibleSize;
+        } else {
+            wrapperDivs[distanceProp](visibleSize);
+            properties[isRowAnimation ? "height" : "width"] = 0;
+        }
+        //Note: It is possible to set the speed to the value "pixel per second", which would result in longer animations for bigger cells.
+        //      This can be done by setting the duration to "duration = visibleSize / pxPerSec;"
+        //      I'm not sure if this would be a good behaviour so I didn't implement it.
+        wrapperDivs.animate(properties, animationOptions);
+    }
+
+    /*
+     * [Internal]
+     * Completes a sliding animation of rows/columns immediately. If the row/columns is not animated (or the animation already finished), nothing happens.
+     * @cells               JQuery          All cells (<th>, <td> elements) that belong to the row or column. These elements are animated.
+     * @context             Row|Column      Is needed to distinguish between row/column.
+     */
+    export function stopAnimation(cells: JQuery, context: Row|Column): void {
+        var wrapperClass: string;           //class for the content wrapper divs (row and column animations need different classes)           
+        if (context instanceof Row) {
+            wrapperClass = ".tranim";
+        } else {
+            wrapperClass = ".tcanim";
+        }
+        var divs = cells.children(wrapperClass);
+        if (divs.length === 0) {             //the outer div might not be the direct child of the cell anymore (will happen if another row/column animation has been started in the meantime)
+            divs = cells.children().children().children(wrapperClass);
+        }
+        divs.stop(true, true);
+    }      
+        
 }
+
 
 
 //Extends all native objects with a tablify-method

@@ -29,6 +29,7 @@ module Tablify {
         columnId: string;       //Internal representation
         defaultTitleContent?: CellDescription;
         defaultBodyContent?: CellDescription;
+        visible?: boolean;                             
     };
 
     export enum RowType { title = 0, body = 1 };
@@ -39,6 +40,7 @@ module Tablify {
         content: {                          
             [key: string]: CellDescription; //{ columnId: CellDescription, ...}
         };
+        visible?: boolean;                    
     };
 
     export type TableDescription = {
@@ -72,6 +74,7 @@ module Tablify {
         columnId?: string;     
         /*sortable...*/
         /*attributes...*/
+        visible?: boolean;                              //true: the column will be visible; false: the column will be added but stays invisible
         
         //The following information is needed to create cells when a new column is inserted (to define the content for each new cell):
         content?: { [key: string]: CellDefinition; };   //key == rowId;   { "rowId": CellDefinition};   If a specific row is not defined, the defaultContent is used
@@ -89,9 +92,10 @@ module Tablify {
     export type RowDefinitionDetails = {
         rowId?: string;
         rowType?: RowType;                                          //default: 1 (body)
+        visible?: boolean;                                          //true: the row will be visible; false: the row will be added but stays invisible
+
         content?: CellContent | Element | Cell | { [key: string]: CellDefinition; };  //{ columnId: CellDefinition, ...}      If only a single CellDefinition is given, it will be used for each cell in the row
         generateMissingColumns?: boolean;                           //true: if the content contains columnIds that do not yet exist, a new column will be generated; false (default): not-existing columnIds will be ignored
-        visible?: boolean;                                          //true: the row will be visible; false: the row will be added but stays invisible
     };
 
     export type RowDefinition = string | RowDefinitionDetails | Row | RowDescription;

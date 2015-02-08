@@ -35,7 +35,7 @@ Table (Manages exacly one HTMLTableElement)
     appendTo                (target: Selector): Table                                               // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
     prependTo               (target: Selector): Table                                               // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
-    addColumn               (columnDef?: ColumnDefinition): Column                                  // Adds a new column to the table.
+    addColumn               (columnDef?: ColumnDefinition, animate?: AnimationSettings): Column     // Adds a new column to the table.
     addRow                  (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Adds a new row to the table
     addTitleRow             (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a titleRow.
     addBodyRow              (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a bodyRow.
@@ -43,8 +43,8 @@ Table (Manages exacly one HTMLTableElement)
     getRowPosition          (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
     getColumnPosition       (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
 
-    removeRow               (identifier: string|number|Row): Table                                  // Removes the specified row.
-    removeColumn            (identifier: string|number|Column): Table                               // Removes the specified column.
+    removeRow               (identifier: string|number|Row, animate?: AnimationSettings): Table     // Removes the specified row.
+    removeColumn            (identifier: string|number|Column, animate?: AnimationSettings): Table  // Removes the specified column.
 
     getRows                 (rowType?: RowType): Row[]                                              // Returns all rows within the table or table section (title/body)
     getRow                  (identifier: string|number|Row): Row                                    // Returns the required row. A row contains all cells.
@@ -54,6 +54,8 @@ Table (Manages exacly one HTMLTableElement)
     getCell                 (rowIdentifier: string|number|Row, columnIdentifier: string|number|Column): Cell    // Returns the specified cell.
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
     getColumnCount          (): number                                                              // Returns the number of columns in the table
+
+    stop                    (): Table                                                               // Stops any active show/hide animation in this and any nested table.
 
     static getUniqueTableId (): string                                                              // Returns a new, unique id that can be used for a new table
     getUniqueRowId          (): string                                                              // Returns a new, unique id that can be used for rows in this table
@@ -105,6 +107,19 @@ Column (Contains basic column Information, similar to a plain datatype)
 
     toObject                (): ColumnDescription                                                   // Converts the Column into an object. Used for serialisation.
     static defaultColumnDefinitionDetails   ColumnDefinitionDetails                                 // Default options that are used in the constructor, if the user omitted them.
+
+    isVisible               (): boolean                                                             // Returns true if the column is visible.
+    show                    (): Column                                                              // Shows the column without animation
+    hide                    (): Column                                                              // Hides the column without animation
+    setVisibility           (visible: boolean, duration?: number|string, complete?: () => void): Column         // Hides or shows the column with a sliding motion
+    setVisibility           (visible: boolean, options?: JQueryAnimationOptions): Column            // Hides or shows the column with a sliding motion
+    stop                    (): Column                                                              // Stops any active show/hide animation that is performed on this column
+    slideLeft               (duration?: number|string, complete?: () => void): Column               // Hides the column with a sliding motion
+    slideLeft               (options?: JQueryAnimationOptions): Column                              // Hides the column with a sliding motion
+    slideRight              (duration?: number|string, complete?: () => void): Column               // Shows the column with a sliding motion
+    slideRight              (options?: JQueryAnimationOptions): Column                              // Shows the column with a sliding motion
+
+
 
 Cell
 ***********************************************************
