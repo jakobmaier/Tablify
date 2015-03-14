@@ -9,21 +9,23 @@ module Tablify {
         /*[Readonly]*/ table: JQuery = null;    //<table>
         private thead: JQuery;                  //<thead>
         private tbody: JQuery;                  //<tbody>
+        private tfoot: JQuery;                  //<tfoot>
 
         /*[Readonly]*/ tableId: string;                 //Unique table id
        
-        /*[Readonly]*/ parentCell: Cell = null;        //If this is a nested table, parentCell is the container of the table. This variable is set by the Cell. (If the table gets destroyed, the cell needs to be informed to convert Table into JQuery)
+        /*[Readonly]*/ parentCell: Cell = null;         //If this is a nested table, parentCell is the container of the table. This variable is set by the Cell. (If the table gets destroyed, the cell needs to be informed to convert Table into JQuery)
 
 
         //Column properties:
-        private sortedColumns: Column[] = [];           //All columns, sorted from left to right.
-        private columns: { [key: string]: Column; } = {};        // All rows, sorted by their id
-        //var columns: Map<string, Column>;             //better alternative to the above definition. However, this is part of EcmaScript6 and currently not supported very well
+        private sortedColumns: Column[] = [];               //All columns, sorted from left to right.
+        private columns: { [key: string]: Column; } = {};   //All columns, sorted by their id
+        //var columns: Map<string, Column>;                 //better alternative to the above definition. However, this is part of EcmaScript6 and currently not supported very well
         
         //Table content - each row is referenced twice for faster access:
-        private titleRows: Row[] = [];                  //Rows, which are part of the table head. Sorted by their output order.
-        private bodyRows: Row[] = [];                   //Rows, containing the data. Sorted by their output order.
-        private rows: { [key: string]: Row; } = {};     //All rows, sorted by their id
+        private titleRows: Row[] = [];                      //Rows, which are part of the table head. Sorted by their output order.
+        private bodyRows: Row[] = [];                       //Rows, containing the data. Sorted by their output order.
+        private footerRows: Row[] = [];                     //Rows, containing the data. Sorted by their output order.
+        private rows: { [key: string]: Row; } = {};         //All rows, sorted by their id
          
 
         static defaultTableDefinitionDetails: TableDefinitionDetails = {    //Default options that are used in the constructor, if the user omitted them.
@@ -36,12 +38,12 @@ module Tablify {
 
 
         /*
-         * Generates and returns a new Tablify Table    (Note: If the given table element is already managed, the old Table-instance will be returned instead of generating a new one)
+         * Generates and returns a new Tablify Table    (Note: If the given html table element is already managed, the old Table-instance will be returned instead of generating a new one)
          * @tableDef        null/undefined              An empty table with no rows and columns will be created.
          *                  string                      tableId. An empty table with the given tableId will be generated.
          *                  TableDefinitionDetails      Data, how the table should look like (rows / columns / ...)
          *                  Table                       The table will be deep-copied.
-         *                  TableDescription            Used for deserialisation.
+         *                  TableDescription            Similar to TableDefinitionDetails. Used for deserialisation.
          * @target          string                      JQuery-Selector. Is resolved to a JQuery element (see below)
          *                  JQuery                      References a single HTMLElement. If the Element is a <table> (HTMLTableElement), the Table is initialised with the table content; Otherwise, a new table is generated within the HTMLElement
          *                  Element                     Target element. Is converted to a JQuery element (see above)
@@ -103,6 +105,7 @@ module Tablify {
 
             this.thead = this.table.find("thead");
             this.tbody = this.table.find("tbody");
+            this.tfoot = this.table.find("tfoot");
         //Generate the table content:           
             if (typeof definition.columns === "number") {           //number
                 definition.columns = makeArray(<number>definition.columns, null);
@@ -112,12 +115,15 @@ module Tablify {
             }
             
             var titleRowCount = definition.titleRowCount;           //Number of rows that should always be titleRows, regardless of possible row.rowType values
+            var footerRowCount = definition.footerRowCount;         //Number of rows that should always be footerRows, regardless of possible row.rowType values
             if (typeof definition.rows === "number") {              //number
                 definition.rows = makeArray(<number>definition.rows, null);
             }                                                      //RowDefinition[]
             for (var i = 0; i < (<RowDescription[]>definition.rows).length; ++i) {
                 if (titleRowCount > i) {
                     this.addTitleRow(definition.rows[i], false);
+                } else if (footerRowCount > (<RowDescription[]>definition.rows).length - i) {
+                    this.addFooterRow(definition.rows[i], false);
                 } else {
                     this.addRow(definition.rows[i], false);
                 }
@@ -151,7 +157,8 @@ module Tablify {
             this.table = jQuery(document.createElement("table"));
             this.table.append(
                 document.createElement("thead"),
-                document.createElement("tbody")
+                document.createElement("tbody"),
+                document.createElement("tfoot")
             );
         }
 
@@ -264,7 +271,8 @@ module Tablify {
                 } else {
                     switch (row.rowType) {
                         case RowType.title: cell = column.defaultTitleContent; break;
-                        case RowType.body:  cell = column.defaultBodyContent;  break;
+                        case RowType.body: cell = column.defaultBodyContent; break;
+                        case RowType.footer: cell = column.defaultFooterContent; break;
                         default: assert(false, "Invalid RowType given.");
                     }
                 }
@@ -310,6 +318,10 @@ module Tablify {
                     this.bodyRows.push(row);
                     this.tbody.append(row.element);       //Add the row to the table-body
                     break;
+                case RowType.footer:
+                    this.footerRows.push(row);
+                    this.tfoot.append(row.element);       //Add the row to the table-footer
+                    break;
                 default:    assert(false, "Invalid RowType given.");
             }
             //Animation:
@@ -324,8 +336,8 @@ module Tablify {
 
         /*
          * Same as "addRow", but the rowType is always a titleRow.
-         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
-         * @animate     null / undefined        Default options are used. The option can be changed with "Table.defaultAnimation"
+         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be ignored
+         * @animate     null / undefined        Default options are used. TDefault options can be changed with "Table.defaultAnimation"
          *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
@@ -339,8 +351,8 @@ module Tablify {
 
         /*
          * Same as "addRow", but the rowType is always a bodyRow.
-         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be overwritten
-         * @animate     null / undefined        Default options are used. The option can be changed with "Table.defaultAnimation"
+         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be ignored
+         * @animate     null / undefined        Default options are used. Default options can be changed with "Table.defaultAnimation"
          *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
@@ -349,6 +361,21 @@ module Tablify {
                 rowDef = { rowId: <string>rowDef };
             }
             (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.body;
+            return this.addRow(rowDef, animate);
+        }
+
+        /*
+         * Same as "addRow", but the rowType is always a footerRow.
+         * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be ignored
+         * @animate     null / undefined        Default options are used. Default options can be changed with "Table.defaultAnimation"
+         *              AnimationSettings       Information about how to animate the insertion. false: no animation.
+         * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
+         */
+        addFooterRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
+            if (!rowDef || typeof rowDef === "string") {
+                rowDef = { rowId: <string>rowDef };
+            }
+            (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.footer;
             return this.addRow(rowDef, animate);
         }
         
@@ -360,7 +387,7 @@ module Tablify {
         * @return          number      Returns the index/position of the given row. If the row couldn't be found, null is returned.
         */
         getRowPosition(identifier: string|Row): number {
-            //Todo: possible performance improvement: store the position within the Row object.
+            //Todo: performance improvement: store the position within the Row object.
             var row: Row;
             if (typeof identifier === "string") {
                 row = this.rows[identifier];    
@@ -380,6 +407,11 @@ module Tablify {
                     return this.titleRows.length + i;
                 }
             }
+            for (var i = 0; i < this.footerRows.length; ++i) {
+                if (this.footerRows[i].equals(row)) {
+                    return this.titleRows.length + this.bodyRows.length + i;
+                }
+            }
             return null;
         }
         
@@ -391,7 +423,7 @@ module Tablify {
          * @return          number      Returns the index/position of the given column. If the column couldn't be found, null is returned.
          */
         getColumnPosition(identifier: string|Column): number {
-            //Todo: possible performance improvement: store the position within the Column object.
+            //Todo: performance improvement: store the position within the Column object.
             var column: Column;
             if (typeof identifier === "string") {
                 column = this.columns[identifier];
@@ -410,9 +442,9 @@ module Tablify {
         }
 
         /*
-         * Returns all rows within the table or table section (title/body).
-         * @rowType     RowType     optional; If no value is given, all rows are returned. If "RowType.title" is given, only the title rows are returned. If "RowType.body" is given, the body rows are returned.
-         * @return      Row[]       All rows within the table or table section (title/body). The order conforms to the output order.
+         * Returns all rows within the table or table section (title/body/footer).
+         * @rowType     RowType     optional; If no value is given, all rows are returned. If "RowType.title" is given, only the title rows are returned. The same for "RowType.body" and "RowType.footer".
+         * @return      Row[]       All rows within the table or table section (title/body/footer). The order conforms to the output order.
          */
         getRows(rowType?: RowType): Row[]{
             if (rowType === RowType.title) {
@@ -421,7 +453,10 @@ module Tablify {
             if (rowType === RowType.body) {
                 return this.bodyRows;
             }
-            return this.titleRows.concat(this.bodyRows);
+            if (rowType === RowType.footer) {
+                return this.footerRows;
+            }
+            return this.titleRows.concat(this.bodyRows, this.footerRows);
         }
 
         /*
@@ -437,7 +472,10 @@ module Tablify {
                 if (identifier < this.titleRows.length) {                           //A titleRow should be returned
                     return this.titleRows[identifier] || null;
                 }
-                return this.bodyRows[identifier - this.titleRows.length] || null;   //A bodyRow should be returned
+                if (identifier < this.titleRows.length + this.bodyRows.length) {    //A bodyRow should be returned
+                    return this.bodyRows[identifier - this.titleRows.length] || null;
+                }
+                return this.footerRows[identifier - this.titleRows.length - this.bodyRows.length] || null;   //A footerRow should be returned
             }
             if (<any>identifier instanceof Row) {
                 return ((<Row>identifier).table === this) ? <Row>identifier : null;
@@ -465,19 +503,11 @@ module Tablify {
             //todo: as soon as the index is stored within the row, the following code can be replaced with "getRow()"
             if (typeof identifier === "number") {
                 rowIndex = identifier;
-                if (identifier < this.titleRows.length) {   //A titleRow should be removed
-                    row = this.titleRows[identifier];
-                    if (!row) {             //Index out of bounds (this check is needed in case of negative or float values)
-                        throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
-                    }
-                    rowId = row.rowId;
-                } else {
-                    row = this.bodyRows[identifier - this.titleRows.length];
-                    if (!row) {             //Index out of bounds
-                        throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
-                    }
-                    rowId = row.rowId;
+                row = this.getRow(identifier);
+                if (!row) {                 //Index out of bounds (this check is needed in case of negative or float values)
+                    throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
                 }
+                rowId = row.rowId;                
             } else if(typeof identifier === "string") {    //the rowId is given
                 rowId = identifier;
                 row = this.rows[rowId];
@@ -500,8 +530,10 @@ module Tablify {
                 delete self.rows[rowId];
                 if (rowIndex < self.titleRows.length) {
                     self.titleRows.splice(rowIndex, 1);
-                } else {
+                } else if (rowIndex < self.titleRows.length + self.bodyRows.length) {
                     self.bodyRows.splice(rowIndex - self.titleRows.length, 1);
+                } else {
+                    self.footerRows.splice(rowIndex - self.titleRows.length - self.bodyRows.length, 1);
                 }
             };
             
@@ -666,7 +698,10 @@ module Tablify {
             if (rowType === RowType.body) {
                 return this.bodyRows.length;
             }
-            return this.titleRows.length + this.bodyRows.length;
+            if (rowType === RowType.footer) {
+                return this.footerRows.length;
+            }
+            return this.titleRows.length + this.bodyRows.length + this.footerRows.length;
         }
         
         /*
@@ -734,12 +769,9 @@ module Tablify {
          * @return              TableDescription    DeepCopy of this table
          */
         toObject(includeContent?: boolean): TableDescription {
-            //assert(this.table !== null, "The table has already been destroyed");
-
             var description: TableDescription = {
                 columns: [],
-                rows: [],
-                titleRowCount: this.titleRows.length
+                rows: []            
             };
             for (var columnId in this.columns) {
                 description.columns.push(this.columns[columnId].toObject());
@@ -749,6 +781,9 @@ module Tablify {
             }
             for (var i = 0; i < this.bodyRows.length; ++i) {
                 description.rows.push(this.bodyRows[i].toObject(includeContent));
+            }
+            for (var i = 0; i < this.footerRows.length; ++i) {
+                description.rows.push(this.footerRows[i].toObject(includeContent));
             }
             return description;
         }

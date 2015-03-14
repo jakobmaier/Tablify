@@ -12,7 +12,7 @@ module Tablify {
 
         defaultTitleContent: Cell;                      //Is used for rendering title cells that have no content
         defaultBodyContent: Cell;                       //Is used for rendering body cells that have no content
-        //defaultFooterContent: Cell;
+        defaultFooterContent: Cell;                     //Is used for rendering footer cells that have no content
 
         private visible: boolean;                       //true: the row is visible
 
@@ -42,8 +42,9 @@ module Tablify {
            
             this.columnId = definition.columnId || this.table.getUniqueColumnId();
             logger.info("Ceating new column \"" + this.columnId + "\".");
-            this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent :  this.columnId);
+            this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent : this.columnId);
             this.defaultBodyContent = new Cell(definition.defaultBodyContent !== null ? definition.defaultBodyContent : this.columnId);
+            this.defaultFooterContent = new Cell(definition.defaultFooterContent !== null ? definition.defaultFooterContent : this.columnId);
             this.visible = definition.visible
             /*attributes...*/
         }
@@ -239,6 +240,7 @@ module Tablify {
                 columnId: this.columnId,
                 defaultTitleContent: this.defaultTitleContent.toObject(true),
                 defaultBodyContent: this.defaultBodyContent.toObject(true),
+                defaultFooterContent: this.defaultFooterContent.toObject(true),
                 visible: this.visible
             };
         }

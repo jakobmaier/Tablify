@@ -39,6 +39,7 @@ Table (Manages exacly one HTMLTableElement)
     addRow                  (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Adds a new row to the table
     addTitleRow             (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a titleRow.
     addBodyRow              (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a bodyRow.
+    addFooterRow            (rowDef?: RowDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a footerRow.
 
     getRowPosition          (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
     getColumnPosition       (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).

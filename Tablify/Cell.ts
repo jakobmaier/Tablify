@@ -87,7 +87,7 @@ module Tablify {
                         
         /*
          * Generates the DOM representation for this cell. Called by the constructor.
-         * @rowType     RowType     RowType of the row this cell belongs to. Needed to distinguish between "th" for title rows and "td" for body rows.
+         * @rowType     RowType     RowType of the row this cell belongs to. Needed to distinguish between "th" for title rows and "td" for body and footer rows.
          * @columnId    string      Id of the corresponsing column (used as a tag attribute)
          */
         private generateDom(rowType: RowType, columnId: string): void {   

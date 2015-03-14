@@ -17,9 +17,7 @@ function generateTestTable(): Tablify.Table {
         defaultTitleContent: "2. Spalte",
         defaultBodyContent: "---"
     });
-
-    table.addTitleRow("Title row");
-
+    
     table.addRow( {
         rowId: "row1",
         rowType: Tablify.RowType.body,
@@ -29,6 +27,8 @@ function generateTestTable(): Tablify.Table {
         },
         generateMissingColumns: true
     });
+
+    table.addTitleRow("Title row");
 
     table.addRow( {
         rowType: Tablify.RowType.title,
@@ -40,7 +40,7 @@ function generateTestTable(): Tablify.Table {
     });
 
     table.addBodyRow({ rowId: "row4", rowType: Tablify.RowType.title, content: "!4!" });
-    table.addRow({ rowId: "row5", content: jQuery("<div style='color: red'>5</div>") });
+    table.addFooterRow({ rowId: "row5", content: jQuery("<div style='color: red'>5</div>") });
     table.addRow({ rowId: "row6", content: jQuery("<div style='color: red'>6</div>").get(0) });
 
     var destroyedTable = new Tablify.Table(smallTable, "#content");
@@ -167,6 +167,9 @@ window.onload = () => {
   
     var tableCopy = new Tablify.Table(table.toObject(false), "#content");
     
+    new Tablify.Table({columns: 5, rows: 5, titleRowCount: 1, footerRowCount: 3}, "#content");
+
+
         
     var smallTable = new Tablify.Table({
         "rows": [{

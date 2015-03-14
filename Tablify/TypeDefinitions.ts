@@ -29,10 +29,11 @@ module Tablify {
         columnId: string;       //Internal representation
         defaultTitleContent?: CellDescription;
         defaultBodyContent?: CellDescription;
+        defaultFooterContent?: CellDescription;
         visible?: boolean;                             
     };
 
-    export enum RowType { title = 0, body = 1 };
+    export enum RowType { title = 0, body = 1, footer = 2 };
 
     export type RowDescription = {
         rowId: string;
@@ -82,7 +83,7 @@ module Tablify {
 
         defaultTitleContent?: CellDefinition;
         defaultBodyContent?: CellDefinition;  
-        //defaultFooterContent?: CellDefinition; 
+        defaultFooterContent?: CellDefinition; 
     };
 
     export type ColumnDefinition = string | ColumnDefinitionDetails | Column | ColumnDescription;
@@ -106,6 +107,7 @@ module Tablify {
         columns?: number|ColumnDefinition[];
         rows?: number|RowDefinition[];
         titleRowCount?: number;                         //Number of rows who are automatically interpreted as titlerows, ignoring possible "row.rowType" options. Default: 0
+        footerRowCount?: number;                        //Number of rows who are automatically interpreted as footerrows, ignoring possible "row.rowType" options. Default: 0
     };
 
     export type TableDefinition = string | TableDefinitionDetails | Table | TableDescription;       //string = tableId

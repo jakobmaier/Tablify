@@ -84,6 +84,9 @@ module Tablify {
                             case RowType.body:
                                 this.cells[columnId] = new Cell(columns[columnId].defaultBodyContent, this, columnId);
                                 break;
+                            case RowType.footer:
+                                this.cells[columnId] = new Cell(columns[columnId].defaultFooterContent, this, columnId);
+                                break;
                             default: assert(false, "Invalid RowType given.");
                         }
                     }
