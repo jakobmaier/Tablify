@@ -49,14 +49,17 @@ Table (Manages exacly one HTMLTableElement)
 
     getRows                 (rowType?: RowType): Row[]                                              // Returns all rows within the table or table section (title/body)
     getRow                  (identifier: string|number|Row): Row                                    // Returns the required row. A row contains all cells.
+    eachRow                 (func: (Row)=>void|boolean): Table                                      // Calls func for each row in the table. If func returns false, iterating will be aborted.
     getColumns              (): Column[]                                                            // Returns all columns within the table.
     getColumn               (identifier: string|number|Column): Column                              // Returns the required column. The column does not contains cells.
+    eachColumn              (func: (Column) => void|boolean): Table                                 // Calls func for each column in the table. If func returns false, iterating will be aborted.
     getColumnCells          (identifier: string|number|Column): { [key: string]: Cell; }            // Returns all cells of a sepcific column.
-    getCell                 (rowIdentifier: string|number|Row, columnIdentifier: string|number|Column): Cell    // Returns the specified cell.
+    getCell                 (columnIdentifier: string|number|Column, rowIdentifier: string|number|Row): Cell    // Returns the specified cell.
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
     getColumnCount          (): number                                                              // Returns the number of columns in the table
 
     stop                    (): Table                                                               // Stops any active show/hide animation in this and any nested table.
+
 
     static getUniqueTableId (): string                                                              // Returns a new, unique id that can be used for a new table
     getUniqueRowId          (): string                                                              // Returns a new, unique id that can be used for rows in this table
@@ -76,8 +79,9 @@ Row (Manages exacly one row within a Table)
     remove                  (): void                                                                // Removes the row from its table.
     equals                  (other: Row): boolean                                                   // Checks if the given row is the same as this row.
 
-    getCell                 (column: string|number|Column): Cell                                    // Returns the cell of a sepcific column.
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this row
+    getCell                 (column: string|number|Column): Cell                                    // Returns the cell of a sepcific column.
+    eachCell                (func: (Cell) => void|boolean): Row                                     // Calls func for each cell/column in the row. If func returns false, iterating will be aborted.
 
     toObject                (includeContent?: boolean): RowDescription                              // Converts the Row into an object. Used for serialisation.
     static defaultRowDefinitionDetails      RowDefinitionDetails                                    // Default options that are used in the constructor, if the user omitted them.
@@ -105,6 +109,7 @@ Column (Contains basic column Information, similar to a plain datatype)
 
     getCell                 (row: string|number|Row): Cell                                          // Returns the cell of a sepcific row.
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this column
+    eachCell                (func: (Cell) => void|boolean): Column                                  // Calls func for each cell/row in the column. If func returns false, iterating will be aborted.
 
     toObject                (): ColumnDescription                                                   // Converts the Column into an object. Used for serialisation.
     static defaultColumnDefinitionDetails   ColumnDefinitionDetails                                 // Default options that are used in the constructor, if the user omitted them.

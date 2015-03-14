@@ -107,7 +107,7 @@ module Tablify {
          * @return          Cell                        The cell of the given row. If the row does not exist, null is being returned.
          */
         getCell(row: string|number|Row): Cell {
-            return this.table.getCell(row, this.columnId);
+            return this.table.getCell(this.columnId, row);
         }
 
         /*
@@ -117,7 +117,21 @@ module Tablify {
         getCells(): { [key: string]: Cell; } {
             return this.table.getColumnCells(this.columnId);
         }
-                
+          
+        /*
+         * Calls func for each cell/row in the column. If func returns false, iterating will be aborted.
+         * func is called in the same order as the rows in the table.
+         * @func        (Cell)=>boolean     Is called for each cell/row in the column. Returns the Cell as a parameter. If the iteration should be aborted, false can be returned.   
+         * @return      Column              Returns this column.
+         */
+        eachCell(func: (Cell) => void|boolean): Column {
+            var self = this;
+            this.table.eachRow(function (row: Row) {
+                return func( row.getCell(self.columnId) );
+            });
+            return this;
+        }
+             
         /*
          * Returns all <th>/<td> elements that belong to this column.
          * @return      JQuery

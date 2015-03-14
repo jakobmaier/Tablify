@@ -263,21 +263,20 @@ module Tablify {
             this.sortedColumns.push(column);
 
             //Add a new cell to each row (the DOM will be updated by each row):
-            for (var rowId in this.rows) {
-                var row: Row = this.rows[rowId];
+            this.eachRow(function (row: Row) {
                 var cell: CellDefinition;
-                if (rowId in content) {     //The user passed a definition on how to create this cell
-                    cell = content[rowId];
+                if (row.rowId in content) {     //The user passed a definition on how to create this cell
+                    cell = content[row.rowId];
                 } else {
                     switch (row.rowType) {
-                        case RowType.title: cell = column.defaultTitleContent; break;
-                        case RowType.body: cell = column.defaultBodyContent; break;
+                        case RowType.title:  cell = column.defaultTitleContent; break;
+                        case RowType.body:   cell = column.defaultBodyContent; break;
                         case RowType.footer: cell = column.defaultFooterContent; break;
-                        default: assert(false, "Invalid RowType given.");
+                        default: assert(false, "Invalid RowType.");
                     }
                 }
                 row.addColumn(column, cell);
-            }
+            });
             
             //Animation:
             if (animate === null || animate === undefined) {    //No value given -> default value
@@ -397,22 +396,17 @@ module Tablify {
             } else {
                 row = identifier;
             }
-            for (var i = 0; i < this.titleRows.length; ++i) {
-                if (this.titleRows[i].equals(row)) {
-                    return i;
+            var pos = 0;
+            this.eachRow(function (it: Row) {
+                if (it.equals(row)) {
+                    return false;
                 }
+                ++pos;
+            });
+            if (pos >= this.titleRows.length + this.bodyRows.length + this.footerRows.length) {
+                return null;
             }
-            for (var i = 0; i < this.bodyRows.length; ++i) {
-                if (this.bodyRows[i].equals(row)) {
-                    return this.titleRows.length + i;
-                }
-            }
-            for (var i = 0; i < this.footerRows.length; ++i) {
-                if (this.footerRows[i].equals(row)) {
-                    return this.titleRows.length + this.bodyRows.length + i;
-                }
-            }
-            return null;
+            return pos;
         }
         
         /*
@@ -483,6 +477,31 @@ module Tablify {
             return this.rows[<string>identifier] || null;
         }
         
+        /*
+         * Calls func for each row in the table. If func returns false, iterating will be aborted.
+         * func is called in the same order as the rows in the table.
+         * @func        (Row)=>boolean      Is called for each row in the table. Returns the Row as a parameter. If the iteration should be aborted, false can be returned.   
+         * @return      Table               Returns this table.
+         */
+        eachRow(func: (Row) => void|boolean): Table {
+            for (var i = 0; i < this.titleRows.length; ++i) {
+                if (func(this.titleRows[i]) === false) {
+                    return this;
+                }
+            }
+            for (var i = 0; i < this.bodyRows.length; ++i) {
+                if (func(this.bodyRows[i]) === false) {
+                    return this;
+                }
+            }
+            for (var i = 0; i < this.footerRows.length; ++i) {
+                if (func(this.footerRows[i]) === false) {
+                    return this;
+                }
+            }
+            return this;
+        }
+
         /*
          * Removes the specified row.
          * @identifier  string                      Removes the row with the given rowId.
@@ -647,6 +666,21 @@ module Tablify {
         }
 
         /*
+         * Calls func for each column in the table. If func returns false, iterating will be aborted.
+         * func is called in the same order as the columns in the table.
+         * @func        (Column)=>boolean   Is called for each column in the table. Returns the Column as a parameter. If the iteration should be aborted, false can be returned.   
+         * @return      Table               Returns this table.
+         */
+        eachColumn(func: (Column) => void|boolean): Table {
+            for (var i = 0; i < this.sortedColumns.length; ++i) {
+                if (func(this.sortedColumns[i]) === false) {
+                    return this;
+                }
+            }
+            return this;
+        }
+        
+        /*
          * Returns all cells of a sepcific column.
          * @identifier      string                      Returns the cells of the column with the given columnId. If the column doesn't exist, null is returned
          *                  number                      Returns the cells of the column with the specified position. The first (left) column has position 0. If the position is out of bounds, null is being returned.
@@ -659,26 +693,26 @@ module Tablify {
                 return null;
             }
             var cells: { [key: string]: Cell; } = {};
-            for (var rowId in this.rows) {
-                cells[rowId] = this.rows[rowId].getCell(identifier);
-            }
+            this.eachRow(function (row) {
+                cells[row.rowId] = row.getCell(identifier);
+            });
             return cells;
         }
        
 
         /*
          * Returns the specified cell.
-         * @rowIdentifier       string          Specifies the rowId of the cell. If the row doesn't exist, null is returned
-         *                      number          Specifies the row position of the cell. The first title-row has position 0. The first body row has the position titleRowCount. If the position is out of bounds, null is being returned.
-         *                      Row             Returns the cell belonging to this row.
-         *                                      Note that passing numbers as strings (eg. getCell("4", "colId");) will be interpreted as a rowId, rather than a position.
          * @columnIdentifier    string          Specifies the columnId of the cell. If the column doesn't exist, null is returned
          *                      number          Specifies the column position of the cell. The first (left) column has position 0. If the position is out of bounds, null is being returned.
          *                      Column          Returns the cell belonging to this column.
          *                                      Note that passing numbers as strings (eg. getCell("rowId", "4");) will be interpreted as a columnId, rather than a position.
+         * @rowIdentifier       string          Specifies the rowId of the cell. If the row doesn't exist, null is returned
+         *                      number          Specifies the row position of the cell. The first title-row has position 0. The first body row has the position titleRowCount. If the position is out of bounds, null is being returned.
+         *                      Row             Returns the cell belonging to this row.
+         *                                      Note that passing numbers as strings (eg. getCell("4", "colId");) will be interpreted as a rowId, rather than a position.
          * @return              Cell            The cell within the given row and column. If either the row or the column doesn't exist, null is returned.
          */
-        getCell(rowIdentifier: string|number|Row, columnIdentifier: string|number|Column): Cell {
+        getCell(columnIdentifier: string|number|Column, rowIdentifier: string|number|Row): Cell {
             var row = this.getRow(rowIdentifier);
             if (row === null) {
                 return null;
@@ -721,9 +755,7 @@ module Tablify {
             this.table.find(".tranim, .tcanim").stop(true, true);
             return this;
         }
-
-
-
+        
         //ID generator for tables, rows and columns:
         private static tableIdSequence: number = 0; //Sequence for globally unique table ids
         private rowIdSequence: number = 0;          //Sequence for table unique row ids
@@ -773,18 +805,12 @@ module Tablify {
                 columns: [],
                 rows: []            
             };
-            for (var columnId in this.columns) {
-                description.columns.push(this.columns[columnId].toObject());
-            }
-            for (var i = 0; i < this.titleRows.length; ++i) {
-                description.rows.push(this.titleRows[i].toObject(includeContent));
-            }
-            for (var i = 0; i < this.bodyRows.length; ++i) {
-                description.rows.push(this.bodyRows[i].toObject(includeContent));
-            }
-            for (var i = 0; i < this.footerRows.length; ++i) {
-                description.rows.push(this.footerRows[i].toObject(includeContent));
-            }
+            this.eachColumn(function (col) {
+                description.columns.push(col.toObject());
+            });
+            this.eachRow(function (row) {
+                description.rows.push(row.toObject(includeContent));
+            });
             return description;
         }
           

@@ -77,7 +77,7 @@ function generateTestTable(): Tablify.Table {
         defaultBodyContent: "---",
         content: {
             "Title row": null,
-            "row1": table.getCell(table.getRow(table.getRowPosition(table.getRow("row1"))).rowId, table.getColumnPosition(table.getColumn("Column 1"))),
+            "row1": table.getCell(table.getColumnPosition(table.getColumn("Column 1")), table.getRow(table.getRowPosition(table.getRow("row1"))).rowId),
             "row5": Tablify.tablify([[[[[[[[42]]]]]]]], undefined, 0),
             "row6": primitiveTablifies,
             "row7": Tablify.tablify(new Date(0)),
@@ -164,7 +164,8 @@ window.onload = () => {
 
         
     var table = generateTestTable();
-  
+    window["tt"] = table;
+
     var tableCopy = new Tablify.Table(table.toObject(false), "#content");
     
     new Tablify.Table({columns: 5, rows: 5, titleRowCount: 1, footerRowCount: 3}, "#content");

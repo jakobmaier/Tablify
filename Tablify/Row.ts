@@ -231,6 +231,21 @@ module Tablify {
         }
             
         /*
+         * Calls func for each cell/column in the row. If func returns false, iterating will be aborted.
+         * func is called in the same order as the columns in the table.
+         * @func        (Cell)=>boolean    Is called for each cell/column in the row. Returns the Cell as a parameter. If the iteration should be aborted, false can be returned.   
+         * @return      Row                Returns this row.
+         */
+        eachCell(func: (Cell) => void|boolean): Row {
+            var self = this;
+            this.table.eachColumn(function (col: Column) {
+                return func(self.cells[col.columnId]);
+            });
+
+            return this;
+        }
+
+        /*
          * Returns true if the row is visible.
          * Note: This function only returns the internal state. Rows therefore must only be shown/hidden with the methods provided by the API.
          * @return      boolean     true: The row is visible; otherwise: false.
