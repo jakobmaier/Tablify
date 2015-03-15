@@ -7,6 +7,13 @@ module Tablify {
         /*[Readonly]*/ element: JQuery;                 //References the <tr>-element.
         /*[Readonly]*/ rowId: string;                   //internal id, unique within the table.
         /*[Readonly]*/ rowType: RowType;                //title- / body- / footer- row
+
+        //The following variables are managed by the Table:
+        /*[Readonly]*/ rowPos: number;                  //position of the row within the table (The first title-row has position 0. The first body row has the position "titleRowCount".)
+        /*[Internal]*/ upperRow: Row;                   //pointer to the row above this one
+        /*[Internal]*/ lowerRow: Row;                   //pointer to the row below this one
+
+
         private cells: { [key: string]: Cell; } = {}    // {columnId: Cell, ...}
         
         private visible: boolean;                       //true: the row is visible
@@ -34,12 +41,13 @@ module Tablify {
         constructor(table: Table, rowDef: RowDefinition, columns: { [key: string]: Column; }) {
             assert(table instanceof Table && typeof columns === "object");
 
-            this.table = table;
+            this.table = table;            
+
             var definition: RowDefinitionDetails = this.extractRowDefinitionDetails(rowDef);    //Convert the input into RowDefinitionDetails
                         
             this.rowId = definition.rowId || this.table.getUniqueRowId();
             this.rowType = definition.rowType;
-            logger.info("Ceating new row \"" + this.rowId + "\".");
+            logger.debug("Creating new row \"" + this.rowId + "\".");
                        
             //definition.content can have one of the following typses: <string|JQuery|Table|Element|Cell| {[key: string]:CellDefinition;}>            
         //Check if each cell should get the same value:
@@ -76,7 +84,7 @@ module Tablify {
                     if (columnId in cellContents) {
                         this.cells[columnId] = new Cell(cellContents[columnId], this, columnId);
                     } else {
-                        logger.info("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
+                        logger.debug("Using default value in row \"" + this.rowId + "\" for column \"" + columnId + "\".");
                         switch (this.rowType) {
                             case RowType.title:
                                 this.cells[columnId] = new Cell(columns[columnId].defaultTitleContent, this, columnId);
@@ -146,7 +154,7 @@ module Tablify {
          * Note that this function does not remove the row from the DOM.
          */
         destroy(): void {
-            logger.info("Deleting row \"" + this.rowId + "\".");
+            logger.debug("Deleting row \"" + this.rowId + "\".");
             this.table = null;
             delete this.element;
         }
@@ -169,8 +177,24 @@ module Tablify {
         }
 
         /*
+         * Returns the row which is above this one.
+         * @return      Row         The row above this one. Returns null if this is the first tablerow.
+         */
+        up(): Row {
+            return this.upperRow;
+        }
+
+        /*
+         * Returns the row which is below this one.
+         * @return      Row         The row below this one. Returns null if this is the last tablerow.
+         */
+        down(): Row {
+            return this.lowerRow;
+        }
+
+        /*
          * [Internal]
-         * Adds a new column (=cell) to the row. Is called everytime a column is added to the table. Also updates DOM.
+         * Adds a new column (=cell) to the row. Is called everytime a column is added to the table. Also updates the DOM.
          * @column    Column                    Information about the new Column
          * @content   CellDefinition            The cell that should be assigned to the new column. A new copy of this parameter is generated.
          * @throws    OperationFailedException  Is thrown if the column already has such a column
@@ -186,8 +210,11 @@ module Tablify {
             if (!column.isVisible()) {              //The column is currently not visible -> don't show the cell
                 cell.element.hide();
             }
-
-            this.element.append(cell.element);      //Append the cell to the DOM
+            if (column.left()) {
+                cell.element.insertAfter(this.getCell(column.left().columnId).element);
+            } else {
+                this.element.prepend(cell.element);      //First column
+            }
         }
 
         /*

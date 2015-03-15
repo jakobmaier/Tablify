@@ -2,7 +2,7 @@
 
 module Tablify {
     "use strict";
-      
+
     export class Table {
 
         //References to commonly used HTML elements:
@@ -58,7 +58,7 @@ module Tablify {
 
         constructor(tableDef?: TableDefinition|Selector, target?: Selector) {  
           
-        //Interchange arguments, if the first parameter has been omitted:
+            //Interchange arguments, if the first parameter has been omitted:
             if (typeof tableDef === "string" || tableDef instanceof jQuery || isElement(tableDef)) {    //If the first parameter is a string, it will always be interpreted as a selector.
                 if (arguments.length !== 1) {
                     throw new InvalidArgumentException("Table.constructor()", "Invalid usage. The first parameter needs to be the TableDefinition, while the second parameter is the target. Both parameters can be omitted, but their order can't be interchanged.");
@@ -66,24 +66,24 @@ module Tablify {
                 target = <string|JQuery|Element>tableDef;
                 tableDef = null;
             }
-            
+
             var definition: TableDefinitionDetails = this.extractTableDefinitionDetails(tableDef);    //Convert the input into TableDefinitionDetails
             this.tableId = definition.tableId || Table.getUniqueTableId();
             
-        //Find the target for the table:    
+            //Find the target for the table:    
             if (!target) {                                  //No target provided -> don't attach to DOM
-                logger.log("Creating detached table element.");
+                logger.info("Creating detached table element.");
                 this.generateDom();
             } else {
-            //Find the selected element:
+                //Find the selected element:
                 this.table = resolveUniSelector(target);
                 if (!this.table) {
                     throw new OperationFailedException("Table.constructor()", "Unable to find unique DOM Element with the following selector: \"" + target + "\"");
                 }
-            //Check if the selected element can be used: 
+                //Check if the selected element can be used: 
                 if (this.table.prop("tagName") !== "TABLE") {       //Create a new table within this element
-                    logger.log("Appending table element. Parent tag: ", this.table.prop("tagName"));
-                    var container = this.table; 
+                    logger.info("Appending table element. Parent tag: ", this.table.prop("tagName"));
+                    var container = this.table;
                     this.generateDom();
                     container.append(this.table);
                 } else {
@@ -98,7 +98,7 @@ module Tablify {
                     throw new OperationFailedException("Table.constructor()", "Not implemented yet: Tablify is currently not able to read existing HTML tables and mange them. Tables have to be created completely using Tablify.");
                 }
             }    
-        //The target has been found, now the table needs to be initialised:
+            //The target has been found, now the table needs to be initialised:
             this.table.addClass("tablified");
             this.table.attr("data-tableId", this.tableId);
             tableStore.registerTable(this);
@@ -106,14 +106,14 @@ module Tablify {
             this.thead = this.table.find("thead");
             this.tbody = this.table.find("tbody");
             this.tfoot = this.table.find("tfoot");
-        //Generate the table content:           
+            //Generate the table content:           
             if (typeof definition.columns === "number") {           //number
                 definition.columns = makeArray(<number>definition.columns, null);
             }                                                       //ColumnDefinition[]
             for (var i = 0; i < (<ColumnDefinition[]>definition.columns).length; ++i) {
-                this.addColumn(definition.columns[i], false);
+                this.addColumn(definition.columns[i], null, false);
             }
-            
+
             var titleRowCount = definition.titleRowCount;           //Number of rows that should always be titleRows, regardless of possible row.rowType values
             var footerRowCount = definition.footerRowCount;         //Number of rows that should always be footerRows, regardless of possible row.rowType values
             if (typeof definition.rows === "number") {              //number
@@ -121,14 +121,14 @@ module Tablify {
             }                                                      //RowDefinition[]
             for (var i = 0; i < (<RowDescription[]>definition.rows).length; ++i) {
                 if (titleRowCount > i) {
-                    this.addTitleRow(definition.rows[i], false);
+                    this.addTitleRow(definition.rows[i], null, false);
                 } else if (footerRowCount > (<RowDescription[]>definition.rows).length - i) {
-                    this.addFooterRow(definition.rows[i], false);
+                    this.addFooterRow(definition.rows[i], null, false);
                 } else {
-                    this.addRow(definition.rows[i], false);
+                    this.addRow(definition.rows[i], null, false);
                 }
             }
-            
+
         }        
      
         /*
@@ -153,13 +153,13 @@ module Tablify {
         /*
          * Generates a blank new DOM representation for this table. Called by the constructor.
          */
-        private generateDom(): void {            
+        private generateDom(): void {
             this.table = jQuery(document.createElement("table"));
             this.table.append(
                 document.createElement("thead"),
                 document.createElement("tbody"),
                 document.createElement("tfoot")
-            );
+                );
         }
 
         /*
@@ -185,7 +185,7 @@ module Tablify {
 
             if (this.parentCell) {  //This table is nested and part of a Cell that stores a Table reference -> change it into a not-manages Table
                 assert(this.parentCell.content === this);
-                this.parentCell.content = this.table; 
+                this.parentCell.content = this.table;
             }
             this.table = null;
         }
@@ -204,7 +204,7 @@ module Tablify {
          * @return      Table       Returns this table
          */
         appendTo(target: Selector): Table {
-            logger.log("Attaching table element.");
+            logger.info("Attaching table element.");
             this.table.appendTo(<any>target);       //cast is needed due to the use of an outdated TypeScript version within the jQuery definition
             return this;
         }
@@ -222,24 +222,31 @@ module Tablify {
         
         /*
          * Adds a new column to the table.
-         * @column      null / undefined            The columnId is generated automatically.
-         *              string                      ColumnId. The cells of the newly generated column will be empty.
-         *              ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
-         *              Column                      The column will be deep-copied.
-         *              ColumnDescription           Used for deserialisation.
-         * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
-         *              AnimationSettings           Information about how to animate the insertion. false: no animation.
-         * @return      Column                      Returns the newly generated Column.
-         * @throws      OperationFailedException    Is thrown if the column couldn't get added to the table.
+         * @column          null / undefined            The columnId is generated automatically.
+         *                  string                      ColumnId. The cells of the newly generated column will be empty.
+         *                  ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
+         *                  Column                      The column will be deep-copied.
+         *                  ColumnDescription           Used for deserialisation.
+         * @columnPosDef    ColumnPositionDefinition    Position, where this column should be inserted.
+         *                                              null:               inserted at the end (right)
+         *                                              "left":             The column will be inserted at the beginning (left)
+         *                                              "right":            The column will be inserted at the ending (right)
+         *                                              positive number:    Position for the column. If this position is not possible (number too big), it will be inserted at the ending (right)
+         *                                              negative number:    Position from the ending. -1: inserted at the end (right). -2: inserted at the second last. If this position is not possible (number too low), it will be inserted at the beginning (left)
+         *                                              Column:             The column will be inserted before the given one.
+         * @animate         null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
+         *                  AnimationSettings           Information about how to animate the insertion. false: no animation.
+         * @return          Column                      Returns the newly generated Column.
+         * @throws          OperationFailedException    Is thrown if the column couldn't get added to the table.
          */
-        addColumn(columnDef?: ColumnDefinition, animate?: AnimationSettings): Column {
+        addColumn(columnDef?: ColumnDefinition, columnPosDef?: ColumnPositionDefinition, animate?: AnimationSettings): Column {
             var column = new Column(this, columnDef);
             var columnId: string = column.columnId;
             if (columnId in this.columns) {
                 throw new OperationFailedException("addColumn()", "There is already a column with the id \"" + columnId + "\" in the table.");
             }
-            
-        //Add the new column to all existing rows:
+            this.integrateNewColumn(columnPosDef, column);
+            //Add the new column to all existing rows:
             var content: { [key: string]: CellDefinition; } = {};
             var generateMissingRows: boolean = false;
             if (columnDef && typeof columnDef !== "string" && !(columnDef instanceof Column)) {     //ColumnDefinitionDetails / ColumnDescription
@@ -250,7 +257,7 @@ module Tablify {
                 content = (<Column>columnDef).getCells();
                 generateMissingRows = false;
             }
-            
+
             if (generateMissingRows) {              //If the content contains data for non-existing rows, the rows should be generated   
                 for (var rowId in content) {
                     if (!(rowId in this.rows)) {    //This row does not exist yet      
@@ -258,19 +265,19 @@ module Tablify {
                     }
                 }
             }
-            
+            //Insert column into table:
             this.columns[columnId] = column;
-            this.sortedColumns.push(column);
+            this.sortedColumns.splice(column.columnPos, 0, column);
 
-            //Add a new cell to each row (the DOM will be updated by each row):
+            //Insert column into html:  (Add a new cell to each row (the DOM will be updated by each row)):
             this.eachRow(function (row: Row) {
                 var cell: CellDefinition;
                 if (row.rowId in content) {     //The user passed a definition on how to create this cell
                     cell = content[row.rowId];
                 } else {
                     switch (row.rowType) {
-                        case RowType.title:  cell = column.defaultTitleContent; break;
-                        case RowType.body:   cell = column.defaultBodyContent; break;
+                        case RowType.title: cell = column.defaultTitleContent; break;
+                        case RowType.body: cell = column.defaultBodyContent; break;
                         case RowType.footer: cell = column.defaultFooterContent; break;
                         default: assert(false, "Invalid RowType.");
                     }
@@ -282,11 +289,82 @@ module Tablify {
             if (animate === null || animate === undefined) {    //No value given -> default value
                 animate = Table.defaultAnimation;
             }
-            
+
             if (animate && column.isVisible()) {
                 column.slideRight(animate);
             }
             return column;
+        }
+        
+        /*
+         * Integrates the column by identifying its position and neigbours and making left/right connections inbetween the columns
+         * @columnPosDef    ColumnPositionDefinition    Position, where this column should be inserted.
+         *                                              null:               inserted at the end (right)
+         *                                              "left":             The column will be inserted at the beginning (left)
+         *                                              "right":            The column will be inserted at the ending (right)
+         *                                              positive number:    Position for the column. If this position is not possible (number too big), it will be inserted at the ending (right)
+         *                                              negative number:    Position from the ending. -1: inserted at the end (right). -2: inserted at the second last. If this position is not possible (number too low), it will be inserted at the beginning (left)
+         *                                              Column:             The column will be inserted before the given one.
+         * @column          Column                      The column which should be inserted (not part of the table yet)
+         */
+        private integrateNewColumn(columnPosDef: ColumnPositionDefinition, column: Column): void {
+            var colPos: number;
+            var noWarn: boolean = false;
+            if (typeof columnPosDef === "string") {
+                switch (columnPosDef.toLowerCase()) {
+                    case "left":    colPos = 0; break; //First column
+                    case "right":   colPos = this.getColumnCount(); break; //Last column
+                    default:
+                        logger.error("columnPosDef contains an invalid string.");
+                        colPos = this.getColumnCount();
+                }
+                noWarn = true;
+            } else if (typeof columnPosDef === "number") {
+                colPos = columnPosDef;
+                if (colPos < 0) {       //-1 = after currently last Column
+                    colPos = this.getColumnCount() + 1 + colPos;
+                }
+            } else if (columnPosDef) {
+                if (columnPosDef.table !== this) {
+                    logger.error("The given column from \"columnPosDef\" belongs to a different table.");
+                    colPos = this.getColumnCount();
+                    noWarn = true;
+                }
+                colPos = columnPosDef.columnPos;    //Insert on the left of the given column
+            } else {                                //Default = last column
+                colPos = this.getColumnCount();
+                noWarn = true;
+            }
+
+            //Check if the colPos is valid:
+            if (colPos < 0) {
+                colPos = 0; 
+                if (!noWarn) { logger.warning("The given column position is too small. The column will be inserted at the beginning."); }
+            } else if (colPos > this.getColumnCount()) {
+                colPos = this.getColumnCount();
+                if (!noWarn) { logger.warning("The given column position is too big. The column will be inserted at the end."); }
+            }
+
+            //Get neighbours:
+            var rightColumn: Column = this.getColumn(colPos);
+            var leftColumn: Column = rightColumn ? rightColumn.left() : this.getColumn(-1);
+
+            //Insert the row:
+            column.leftColumn = leftColumn;
+            column.rightColumn = rightColumn;
+            column.columnPos = colPos;
+            if (leftColumn !== null) {
+                leftColumn.rightColumn = column;
+            }
+            if (rightColumn !== null) {
+                rightColumn.leftColumn = column;
+            }
+                       
+            //Increase columnPos in shifted columns:
+            var it: Column = column;
+            while ((it = it.right()) !== null) {
+                ++it.columnPos;
+            }
         }
         
         /*
@@ -296,32 +374,41 @@ module Tablify {
          *              RowDefinitionDetails        Contains detailed information on how to generate the new row.
          *              Row                         The row will be deep-copied.
          *              RowDescription              Used for deserialisation.
+         * @rowPosDef   RowPositionDefinition       Position, where this row should be inserted.
+         *                                          null:               inserted at the end
+         *                                          "top":              The row will be inserted at the beginning
+         *                                          "bottom":           The row will be inserted at the ending
+         *                                          positive number:    Position for the row. If this position is not possible (eg. "0" for a footer-Row if there are bodyRows before), the nearest possible position will be chosen.
+         *                                          negative number:    Position from the ending. -1: inserted at the end. -2: inserted at the second last. If this position is not possible, the nearest possible position will be chosen.
+         *                                          Row:                The row will be inserted before the given one.
          * @animate     null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
          *              AnimationSettings           Information about how to animate the insertion. false: no animation.
          * @return      Row                         Returns the newly generated Row.
          * @throws      OperationFailedException    Is thrown if the row couldn't get added to the table.
          */
-        addRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
+        addRow(rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row {
             var row = new Row(this, rowDef, this.columns);
-            
             if (row.rowId in this.rows) {
                 throw new OperationFailedException("addRow()", "There is already a row with the id \"" + row.rowId + "\" in the table.");
             }
+            this.integrateNewRow(rowPosDef, row);       //Connects the row with it's neighbours                   
+            //Add row to table:
             this.rows[row.rowId] = row;
             switch (row.rowType) {
-                case RowType.title:
-                    this.titleRows.push(row);
-                    this.thead.append(row.element);       //Add the row to the table-head
-                    break;
-                case RowType.body:
-                    this.bodyRows.push(row);
-                    this.tbody.append(row.element);       //Add the row to the table-body
-                    break;
-                case RowType.footer:
-                    this.footerRows.push(row);
-                    this.tfoot.append(row.element);       //Add the row to the table-footer
-                    break;
-                default:    assert(false, "Invalid RowType given.");
+                case RowType.title:  this.titleRows.splice(row.rowPos, 0, row); break;
+                case RowType.body:   this.bodyRows.splice(row.rowPos - this.getRowCount(RowType.title), 0, row); break;
+                case RowType.footer: this.footerRows.splice(row.rowPos - this.getRowCount(RowType.title) - this.getRowCount(RowType.body), 0, row); break;
+                default: assert(false, "Invalid RowType given.");
+            }
+            //Add row to html:
+            if (row.up() && row.up().rowType === row.rowType) {
+                row.element.insertAfter( row.up().element );
+            } else {
+                switch (row.rowType) {
+                    case RowType.title:  this.thead.prepend(row.element); break;
+                    case RowType.body:   this.tbody.prepend(row.element); break;
+                    case RowType.footer: this.tfoot.prepend(row.element); break;
+                }
             }
             //Animation:
             if (animate === null || animate === undefined) {    //No value given -> default value
@@ -330,52 +417,158 @@ module Tablify {
             if (animate && row.isVisible()) {
                 row.slideDown(animate);
             }
-            return row;       
+            return row;
         }
 
         /*
+         * Integrates the row by identifying its position and neigbours and making upper/lower connections inbetween the rows
+         * @rowPosDef   RowPositionDefinition       Position, where this row should be inserted.
+         *                                          null:               insertion at the end
+         *                                          "top":              The row will be inserted at the beginning of the section (title/body/footer)
+         *                                          "bottom":           The row will be inserted at the end of the section (title/body/footer)
+         *                                          positive number:    Position for the row. If this position is not possible (eg. "0" for a footer-Row if there are bodyRows before), the nearest possible position will be chosen.
+         *                                          negative number:    Position from the ending. -1: inserted at the end of the table. -2: inserted at the second last. If this position is not possible, the nearest possible position will be chosen.
+         *                                          Row:                The row will be inserted before the given one. If this position is not possible, the nearest possible position will be chosen.
+         * @row         Row                         The row which should be inserted (not part of the table yet)
+         */
+        private integrateNewRow(rowPosDef: RowPositionDefinition, row: Row): void {
+            var rowPos: number;
+            var noWarn: boolean = false;
+            if (typeof rowPosDef === "string") {
+                switch (rowPosDef.toLowerCase()) {
+                    case "top":     rowPos = 0; break; //First row
+                    case "bottom":  rowPos = this.getRowCount(); break; //Last row
+                    default:
+                        logger.error("rowPosDef contains an invalid string.");
+                        rowPos = this.getRowCount();
+                }
+                noWarn = true;
+            } else if (typeof rowPosDef === "number") {
+                rowPos = rowPosDef;
+                if (rowPos < 0) {       //-1 = after currently last Row
+                    rowPos = this.getRowCount() + 1 + rowPos;
+                }
+            } else if (rowPosDef) {
+                if (rowPosDef.table !== this) {
+                    logger.error("The given row from \"rowPosDef\" belongs to a different table.");
+                    rowPos = this.getRowCount();
+                    noWarn = true;
+                }
+                rowPos = rowPosDef.rowPos;      //Insert above the given row
+            } else {                            //Default = last row
+                rowPos = this.getRowCount();
+                noWarn = true;
+            }
+
+            //Check if the rowPos is valid (might be outside the table section (table/body/footer) of the new row)
+            var minPos: number;
+            var maxPos: number;
+            switch (row.rowType) {
+                case RowType.title:
+                    minPos = 0;
+                    maxPos = this.getRowCount(RowType.title); break;
+                case RowType.body:
+                    minPos = this.getRowCount(RowType.title);
+                    maxPos = this.getRowCount(RowType.title) + this.getRowCount(RowType.body); break;
+                case RowType.footer:
+                    minPos = this.getRowCount(RowType.title) + this.getRowCount(RowType.body);
+                    maxPos = this.getRowCount(); break;
+            }
+            if (rowPos < minPos) {
+                rowPos = minPos;
+                if (!noWarn) { logger.warning("The given row position is too small. The row will be inserted at the beginning."); }
+            } else if (rowPos > maxPos) {
+                rowPos = maxPos;
+                if (!noWarn) { logger.warning("The given row position is too big. The row will be inserted at the end."); }
+            }
+
+            //Get neighbours:
+            var lowerRow: Row = this.getRow(rowPos);
+            var upperRow: Row = lowerRow ? lowerRow.up() : this.getRow(-1);
+
+            //Insert the row:
+            row.upperRow = upperRow;
+            row.lowerRow = lowerRow;
+            row.rowPos = rowPos;
+            if (upperRow !== null) {
+                upperRow.lowerRow = row;
+            }
+            if (lowerRow !== null) {
+                lowerRow.upperRow = row;
+            }
+                       
+            //Increase rowPos in shifted rows:
+            var it: Row = row;
+            while ((it = it.down()) !== null) {
+                ++it.rowPos;
+            }
+        }
+        
+        /*
          * Same as "addRow", but the rowType is always a titleRow.
          * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be ignored
+         * @rowPosDef   RowPositionDefinition   Position, where this row should be inserted.
+         *                                          Same as rowPosDef in addRow(), with one difference:
+         *                                          number:    Position for the row within the title-section. 0: first titleRow (=first table row); -1: last titleRow; If this position is not possible, the nearest possible position will be chosen.
          * @animate     null / undefined        Default options are used. TDefault options can be changed with "Table.defaultAnimation"
          *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addTitleRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
+        addTitleRow(rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row {
             if (!rowDef || typeof rowDef === "string") {
                 rowDef = { rowId: <string>rowDef };
             }
             (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.title;
-            return this.addRow(rowDef, animate);
+            if (typeof rowPosDef === "number" && rowPosDef < 0) {
+                rowPosDef = <number>rowPosDef - this.getRowCount(RowType.body) - this.getRowCount(RowType.footer);
+            }
+            return this.addRow(rowDef, rowPosDef, animate);
         }
 
         /*
          * Same as "addRow", but the rowType is always a bodyRow.
          * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be ignored
+         * @rowPosDef   RowPositionDefinition   Position, where this row should be inserted.
+         *                                          Same as rowPosDef in addRow(), with one difference:
+         *                                          number:    Position for the row within the body-section. 0: first bodyRow; -1: last bodyRow; If this position is not possible, the nearest possible position will be chosen.
          * @animate     null / undefined        Default options are used. Default options can be changed with "Table.defaultAnimation"
          *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addBodyRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
+        addBodyRow(rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row {
             if (!rowDef || typeof rowDef === "string") {
                 rowDef = { rowId: <string>rowDef };
             }
             (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.body;
-            return this.addRow(rowDef, animate);
+            if (typeof rowPosDef === "number") {
+                if (rowPosDef >= 0) {
+                    rowPosDef = <number>rowPosDef + this.getRowCount(RowType.title);
+                } else {
+                    rowPosDef = <number>rowPosDef - this.getRowCount(RowType.footer);
+                }
+            }
+            return this.addRow(rowDef, rowPosDef, animate);
         }
 
         /*
          * Same as "addRow", but the rowType is always a footerRow.
          * @rowDef      RowDefinition           Any row definition. If the property "rowDef.rowType" is set, it will be ignored
+         * @rowPosDef   RowPositionDefinition   Position, where this row should be inserted.
+         *                                          Same as rowPosDef in addRow(), with one difference:
+         *                                          number:    Position for the row within the footer-section. 0: first footerRow; -1: last fotterRow (=last table row); If this position is not possible, the nearest possible position will be chosen.
          * @animate     null / undefined        Default options are used. Default options can be changed with "Table.defaultAnimation"
          *              AnimationSettings       Information about how to animate the insertion. false: no animation.
          * @return      Row                     Returns the newly generated Row. Returns null if the row couldn't get generated.
          */
-        addFooterRow(rowDef?: RowDefinition, animate?: AnimationSettings): Row {
+        addFooterRow(rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row {
             if (!rowDef || typeof rowDef === "string") {
                 rowDef = { rowId: <string>rowDef };
             }
             (<RowDefinitionDetails|Row|RowDescription>rowDef).rowType = RowType.footer;
-            return this.addRow(rowDef, animate);
+            if (typeof rowPosDef === "number" && rowPosDef >= 0) {
+                rowPosDef = <number>rowPosDef + this.getRowCount(RowType.title) + this.getRowCount(RowType.body);
+            }
+            return this.addRow(rowDef, rowPosDef, animate);
         }
         
         /*
@@ -386,27 +579,16 @@ module Tablify {
         * @return          number      Returns the index/position of the given row. If the row couldn't be found, null is returned.
         */
         getRowPosition(identifier: string|Row): number {
-            //Todo: performance improvement: store the position within the Row object.
             var row: Row;
             if (typeof identifier === "string") {
-                row = this.rows[identifier];    
+                row = this.rows[identifier];
                 if (!row) {     //The rowId does not exist
                     return null;
                 }
             } else {
                 row = identifier;
             }
-            var pos = 0;
-            this.eachRow(function (it: Row) {
-                if (it.equals(row)) {
-                    return false;
-                }
-                ++pos;
-            });
-            if (pos >= this.titleRows.length + this.bodyRows.length + this.footerRows.length) {
-                return null;
-            }
-            return pos;
+            return row.rowPos;
         }
         
         /*
@@ -417,7 +599,6 @@ module Tablify {
          * @return          number      Returns the index/position of the given column. If the column couldn't be found, null is returned.
          */
         getColumnPosition(identifier: string|Column): number {
-            //Todo: performance improvement: store the position within the Column object.
             var column: Column;
             if (typeof identifier === "string") {
                 column = this.columns[identifier];
@@ -427,12 +608,7 @@ module Tablify {
             } else {
                 column = identifier;
             }
-            for (var i = 0; i < this.sortedColumns.length; ++i) {
-                if (this.sortedColumns[i].equals(column)) {
-                    return i;
-                }
-            }
-            return null;
+            return column.columnPos;
         }
 
         /*
@@ -440,7 +616,7 @@ module Tablify {
          * @rowType     RowType     optional; If no value is given, all rows are returned. If "RowType.title" is given, only the title rows are returned. The same for "RowType.body" and "RowType.footer".
          * @return      Row[]       All rows within the table or table section (title/body/footer). The order conforms to the output order.
          */
-        getRows(rowType?: RowType): Row[]{
+        getRows(rowType?: RowType): Row[] {
             if (rowType === RowType.title) {
                 return this.titleRows;
             }
@@ -452,31 +628,81 @@ module Tablify {
             }
             return this.titleRows.concat(this.bodyRows, this.footerRows);
         }
-
+        
         /*
          * Returns the required row. A row contains all cells.
          * @identifier      string          Returns the row with the given rowId. If the id doesn't exist, null is returned
          *                  number          Returns the row with the specified position. The first title-row has position 0. The first body row has the position "titleRowCount". If the position is out of bounds, null is being returned.
+         *                                  negative number: -1 = last row;
          *                  Row             Returns this row if it is part of the table. Otherwise null is being returned.
          *                                  Note that passing numbers as strings (eg. getRow("4");) will be interpreted as a rowId, rather than a position.
          * @return          Row             If the requested row exists, it will be returned. Otherwise, null is returned.
          */
         getRow(identifier: string|number|Row): Row {
             if (typeof identifier === "number") {
-                if (identifier < this.titleRows.length) {                           //A titleRow should be returned
-                    return this.titleRows[identifier] || null;
+                var rowPos: number = identifier;                                //Needed because of TypeScript's wrong error messages
+                if (rowPos < 0) {
+                    rowPos = this.getRowCount() + rowPos;
                 }
-                if (identifier < this.titleRows.length + this.bodyRows.length) {    //A bodyRow should be returned
-                    return this.bodyRows[identifier - this.titleRows.length] || null;
+                if (rowPos < this.getRowCount(RowType.title)) {                           //A titleRow should be returned
+                    return this.titleRows[rowPos] || null;
                 }
-                return this.footerRows[identifier - this.titleRows.length - this.bodyRows.length] || null;   //A footerRow should be returned
+                if (identifier < this.getRowCount(RowType.title) + this.getRowCount(RowType.body)) {    //A bodyRow should be returned
+                    return this.bodyRows[rowPos - this.getRowCount(RowType.title)] || null;
+                }
+                return this.footerRows[rowPos - this.getRowCount(RowType.title) - this.getRowCount(RowType.body)] || null;   //A footerRow should be returned
             }
             if (<any>identifier instanceof Row) {
                 return ((<Row>identifier).table === this) ? <Row>identifier : null;
             }
             return this.rows[<string>identifier] || null;
         }
-        
+
+        /*
+         * Returns the first row within the table or table section (title/body/footer).
+         * @rowType     RowType     optional; If no value is given, the first row within the table is returned.
+         * @return      Row         The first row within the table or table section. If the table section contains no rows, null is returned.
+         */
+        getFirstRow(rowType?: RowType): Row {
+            if (rowType === RowType.title) {
+                return this.titleRows[0] || null;
+            }
+            if (rowType === RowType.body) {
+                return this.bodyRows[0] || null;
+            }
+            if (rowType === RowType.footer) {
+                return this.footerRows[0] || null;
+            }
+            return this.getRow(0)
+        }
+
+        /*
+         * Returns the last row within the table or table section (title/body/footer).
+         * @rowType     RowType     optional; If no value is given, the last row within the table is returned.
+         * @return      Row         The last row within the table or table section. If the table section contains no rows, null is returned.
+         */
+        getLastRow(rowType?: RowType): Row {
+            if (rowType === RowType.title) {
+                if (this.getRowCount(RowType.title) === 0) {
+                    return null;
+                }
+                return this.titleRows[this.getRowCount(RowType.title) - 1];
+            }
+            if (rowType === RowType.body) {
+                if (this.getRowCount(RowType.body) === 0) {
+                    return null;
+                }
+                return this.bodyRows[this.getRowCount(RowType.body) - 1];
+            }
+            if (rowType === RowType.footer) {
+                if (this.getRowCount(RowType.footer) === 0) {
+                    return null;
+                }
+                return this.footerRows[this.getRowCount(RowType.footer) - 1];
+            }
+            return this.getRow(-1);
+        }
+                        
         /*
          * Calls func for each row in the table. If func returns false, iterating will be aborted.
          * func is called in the same order as the rows in the table.
@@ -484,17 +710,17 @@ module Tablify {
          * @return      Table               Returns this table.
          */
         eachRow(func: (Row) => void|boolean): Table {
-            for (var i = 0; i < this.titleRows.length; ++i) {
+            for (var i = 0; i < this.getRowCount(RowType.title); ++i) {
                 if (func(this.titleRows[i]) === false) {
                     return this;
                 }
             }
-            for (var i = 0; i < this.bodyRows.length; ++i) {
+            for (var i = 0; i < this.getRowCount(RowType.body); ++i) {
                 if (func(this.bodyRows[i]) === false) {
                     return this;
                 }
             }
-            for (var i = 0; i < this.footerRows.length; ++i) {
+            for (var i = 0; i < this.getRowCount(RowType.footer); ++i) {
                 if (func(this.footerRows[i]) === false) {
                     return this;
                 }
@@ -514,45 +740,31 @@ module Tablify {
          * @throws      OperationFailedException    Is thrown if the given row does not exist or is part of another table.
          */
         removeRow(identifier: string|number|Row, animate?: AnimationSettings): Table {
-            //The following informations are needed in order to remove a row:
-            var row: Row;
-            var rowId: string;
-            var rowIndex: number;
-
-            //todo: as soon as the index is stored within the row, the following code can be replaced with "getRow()"
-            if (typeof identifier === "number") {
-                rowIndex = identifier;
-                row = this.getRow(identifier);
-                if (!row) {                 //Index out of bounds (this check is needed in case of negative or float values)
-                    throw new OperationFailedException("removeRow()", "A row with position " + identifier + " does not exist.");
-                }
-                rowId = row.rowId;                
-            } else if(typeof identifier === "string") {    //the rowId is given
-                rowId = identifier;
-                row = this.rows[rowId];
-                if (!row) {                 //rowId does not exist
-                    throw new OperationFailedException("removeRow()", "A row with the rowId \"" + rowId + "\" does not exist.");
-                }
-                rowIndex = this.getRowPosition(row);
-            } else {                        //a Row has been given
-                rowId = identifier.rowId;
-                rowIndex = this.getRowPosition(identifier);
-                row = identifier;
-                if (rowIndex === null) {    //the row is not part of this table
-                    throw new OperationFailedException("removeRow()", "The given row is not part of the table.");
-                }
+            var row = this.getRow(identifier);
+            if (row === null) {
+                throw new OperationFailedException("removeRow()", "The row does not exist in this table.");
             }
+                        
             var self = this;
-            var removeRowNow = function () {        //"this" will be bound the the removed Row (or to undefined, if no animation is used)
-                self.rows[rowId].element.remove();  //Remove the row from the DOM
+            var removeRowNow = function () {        //"this" will be bound to the removed Row (or to undefined, if no animation is used)
+                row.element.remove();               //Remove the row from the DOM
                 row.destroy();                      //The row is not part of the table anymore -> make it unusable
-                delete self.rows[rowId];
-                if (rowIndex < self.titleRows.length) {
-                    self.titleRows.splice(rowIndex, 1);
-                } else if (rowIndex < self.titleRows.length + self.bodyRows.length) {
-                    self.bodyRows.splice(rowIndex - self.titleRows.length, 1);
+                delete self.rows[row.rowId];
+                if (row.rowPos < self.titleRows.length) {
+                    self.titleRows.splice(row.rowPos, 1);
+                } else if (row.rowPos < self.titleRows.length + self.bodyRows.length) {
+                    self.bodyRows.splice(row.rowPos - self.titleRows.length, 1);
                 } else {
-                    self.footerRows.splice(rowIndex - self.titleRows.length - self.bodyRows.length, 1);
+                    self.footerRows.splice(row.rowPos - self.titleRows.length - self.bodyRows.length, 1);
+                }
+                //Update row-connections (upper/lower-pointers):
+                if (row.upperRow) { row.upperRow.lowerRow = row.lowerRow; }
+                if (row.lowerRow) { row.lowerRow.upperRow = row.upperRow; }
+            
+                //Decrease rowPos in moved rows:
+                var it: Row = row;
+                while ((it = it.down()) !== null) {
+                    --it.rowPos;
                 }
             };
             
@@ -565,7 +777,7 @@ module Tablify {
                 animationOptions.complete = envelopFunctionCall(
                     animationOptions.complete,
                     removeRowNow
-                );
+                    );
                 row.slideUp(animationOptions);
             } else {
                 removeRowNow();
@@ -585,41 +797,27 @@ module Tablify {
          * @throws      OperationFailedException    Is thrown if the given column does not exist or is part of another table.
          */
         removeColumn(identifier: string|number|Column, animate?: AnimationSettings): Table {
-            //The following informations are needed in order to remove a column:
-            var column: Column;
-            var columnId: string;
-            var columnIndex: number;
-
-            if (typeof identifier === "number") {
-                columnIndex = identifier;
-                column = this.sortedColumns[identifier];
-                if (!column) {                  //Index out of bounds
-                    throw new OperationFailedException("removeColumn()", "A column with position " + identifier + " does not exist.");
-                }
-                columnId = column.columnId;               
-            } else if (typeof identifier === "string") {    //the columnId is given
-                columnId = identifier;
-                column = this.columns[columnId];
-                if (!column) {                  //columnId does not exist
-                    throw new OperationFailedException("removeColumn()", "A column with the columnId \"" + columnId + "\" does not exist.");
-                }
-                columnIndex = this.getColumnPosition(column);                
-            } else {                            //a Column has been given
-                column = identifier;
-                columnId = identifier.columnId;
-                columnIndex = this.getColumnPosition(identifier);
-                if (columnIndex === null) {     //the column is not part of this table
-                    throw new OperationFailedException("removeColumn()", "The given column is not part of the table.");
-                }
+            var column: Column = this.getColumn(identifier);
+            if (column === null) {
+                throw new OperationFailedException("removeColumn()", "The column does not exist in this table.");
             }
+            
             var self = this;
-            var removeColumnNow = function () {     //"this" will be bound the the removed Row (or to undefined, if no animation is used)
+            var removeColumnNow = function () {     //"this" will be bound to the removed Column (or to undefined, if no animation is used)
                 for (var rowId in self.rows) {      //Remove the column from the DOM
-                    self.rows[rowId].removeColumn(columnId);
+                    self.rows[rowId].removeColumn(column.columnId);
                 }
                 column.destroy();                   //The column is not part of the table anymore -> make it unusable
-                delete self.columns[columnId];
-                self.sortedColumns.splice(columnIndex, 1);
+                delete self.columns[column.columnId];
+                self.sortedColumns.splice(column.columnPos, 1);
+                //Update column-connections (left/right-pointers):
+                if (column.leftColumn) { column.leftColumn.rightColumn = column.rightColumn; }
+                if (column.rightColumn) { column.rightColumn.leftColumn = column.leftColumn; }         
+                //Decrease columnPos in moved columns:
+                var it: Column = column;
+                while ((it = it.right()) !== null) {
+                    --it.columnPos;
+                }
             };
             
             //Animation:
@@ -631,7 +829,7 @@ module Tablify {
                 animationOptions.complete = envelopFunctionCall(
                     animationOptions.complete,
                     removeColumnNow
-                );
+                    );
                 column.slideLeft(animationOptions);
             } else {
                 removeColumnNow();
@@ -651,13 +849,18 @@ module Tablify {
          * Returns the required column. The column does not contains cells.
          * @identifier      string          Returns the column with the given columnId. If the id doesn't exist, null is returned
          *                  number          Returns the column with the specified position. The first (left) column has position 0. If the position is out of bounds, null is being returned.
+         *                                  negative number: -1 = last column;
          *                  Column          Returns this column if it is part of the table. Otherwise null is being returned.
          *                                  Note that passing numbers as strings (eg. getColumn("4");) will be interpreted as a columnId, rather than a position.
          * @return          Column          If the requested column exists, it will be returned. Otherwise, null is returned.
          */
         getColumn(identifier: string|number|Column): Column {
-            if (typeof identifier === "number") {    
-                return this.sortedColumns[identifier] || null;
+            if (typeof identifier === "number") {
+                var colPos: number = identifier;                 //Needed because of TypeScript's wrong error messages
+                if (colPos < 0) {
+                    colPos = this.getColumnCount() + colPos;
+                }
+                return this.sortedColumns[colPos] || null;
             }
             if (<any>identifier instanceof Column) {
                 return ((<Column>identifier).table === this) ? <Column>identifier : null;
@@ -803,7 +1006,7 @@ module Tablify {
         toObject(includeContent?: boolean): TableDescription {
             var description: TableDescription = {
                 columns: [],
-                rows: []            
+                rows: []
             };
             this.eachColumn(function (col) {
                 description.columns.push(col.toObject());
@@ -813,8 +1016,8 @@ module Tablify {
             });
             return description;
         }
-          
+
     }
-    
+
 }
 

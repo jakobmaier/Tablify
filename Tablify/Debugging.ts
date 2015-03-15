@@ -6,6 +6,7 @@ module Tablify {
     "use strict";
 
     interface ILogger {
+        debug(...args: any[]): void;
         log(...args: any[]): void;
         info(...args: any[]): void;
         warning(...args: any[]): void;
@@ -17,6 +18,9 @@ module Tablify {
     }
 
     class ConsoleLogger implements ILogger {
+        debug(...args: any[]): void {
+            console.debug.apply(console, arguments);
+        }
         log(...args: any[]): void {
             console.log.apply(console, arguments);
         }

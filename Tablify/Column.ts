@@ -10,6 +10,11 @@ module Tablify {
         //sortable?: boolean;
         //...
 
+        //The following variables are managed by the Table:
+        /*[Readonly]*/ columnPos: number;               //position of the column within the table (The first/left column has position 0. The rightest column has the position "columnCount".)
+        /*[Internal]*/ leftColumn: Column;              //pointer to the column to the left
+        /*[Internal]*/ rightColumn: Column;             //pointer to the column to the right
+
         defaultTitleContent: Cell;                      //Is used for rendering title cells that have no content
         defaultBodyContent: Cell;                       //Is used for rendering body cells that have no content
         defaultFooterContent: Cell;                     //Is used for rendering footer cells that have no content
@@ -41,7 +46,7 @@ module Tablify {
             var definition: ColumnDefinitionDetails = this.extractColumnDefinitionDetails(columnDef);    //Convert the input into ColumnDefinitionDetails
            
             this.columnId = definition.columnId || this.table.getUniqueColumnId();
-            logger.info("Ceating new column \"" + this.columnId + "\".");
+            logger.debug("Creating new column \"" + this.columnId + "\".");
             this.defaultTitleContent = new Cell(definition.defaultTitleContent !== null ? definition.defaultTitleContent : this.columnId);
             this.defaultBodyContent = new Cell(definition.defaultBodyContent !== null ? definition.defaultBodyContent : this.columnId);
             this.defaultFooterContent = new Cell(definition.defaultFooterContent !== null ? definition.defaultFooterContent : this.columnId);
@@ -77,7 +82,7 @@ module Tablify {
          * Note that this function does not remove the column from the DOM.
          */
         destroy() {
-            logger.info("Deleting column \"" + this.columnId + "\".");
+            logger.debug("Deleting column \"" + this.columnId + "\".");
             this.table = null;
         }
 
@@ -96,6 +101,22 @@ module Tablify {
          */
         equals(other: Column): boolean {
             return (other.table === this.table && other.columnId === this.columnId);
+        }
+
+        /*
+         * Returns the column to the left of this one
+         * @return      Column      The column to the left of this one. Returns null if this is the first column.
+         */
+        left(): Column {
+            return this.leftColumn;
+        }
+
+        /*
+         * Returns the column to the right of this one
+         * @return      Column         The column to the right of this one. Returns null if this is the last column.
+         */
+        right(): Column {
+            return this.rightColumn;
         }
 
         /*

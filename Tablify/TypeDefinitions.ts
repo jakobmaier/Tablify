@@ -87,7 +87,7 @@ module Tablify {
     };
 
     export type ColumnDefinition = string | ColumnDefinitionDetails | Column | ColumnDescription;
-
+    export type ColumnPositionDefinition = string|number|Column;    //Is used to specify the position for a column (string can either be "left" or "right")
 
 //Adding new Rows to an existing Table:
     export type RowDefinitionDetails = {
@@ -100,6 +100,7 @@ module Tablify {
     };
 
     export type RowDefinition = string | RowDefinitionDetails | Row | RowDescription;
+    export type RowPositionDefinition = string|number|Row;          //Is used to specify the position for a row (string can either be "top" or "bottom")
     
 //Creating Tables from JSON:
     export type TableDefinitionDetails = {

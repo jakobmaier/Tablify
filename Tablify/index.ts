@@ -39,9 +39,9 @@ function generateTestTable(): Tablify.Table {
         }
     });
 
-    table.addBodyRow({ rowId: "row4", rowType: Tablify.RowType.title, content: "!4!" });
+    table.addBodyRow({ rowId: "row4", rowType: Tablify.RowType.title, content: "!4!" }), -1;
     table.addFooterRow({ rowId: "row5", content: jQuery("<div style='color: red'>5</div>") });
-    table.addRow({ rowId: "row6", content: jQuery("<div style='color: red'>6</div>").get(0) });
+    table.addRow({ rowId: "row6", content: jQuery("<div style='color: red'>6</div>").get(0) }, 0);
 
     var destroyedTable = new Tablify.Table(smallTable, "#content");
 
@@ -53,7 +53,7 @@ function generateTestTable(): Tablify.Table {
             "Column 3": new Tablify.Table({ rows: 3, columns: 2, titleRowCount: 1 }),
             "No column": "nothing"
         }
-    });
+    }, table.getRow("row6"));
     destroyedTable.destroy();
     
     var primitiveTablifies = new Tablify.Table(
@@ -85,12 +85,12 @@ function generateTestTable(): Tablify.Table {
             "row4": new Tablify.Table(table.toObject(true))
         },
         generateMissingRows: true
-    });
+    }, "right");
     Tablify.Cell.defaultCellDefinitionDetails.content = "";
 
-    table.addColumn("temp1");
+    table.addColumn("temp1", 2);
     table.addColumn("temp2").remove();
-    table.addColumn({ columnId: "invisible", defaultBodyContent: "invisible", visible: false }, 500);
+    table.addColumn({ columnId: "invisible", defaultBodyContent: "invisible", visible: false }, 3, 500);
     try {
         table.removeColumn("noExistingColumn");
     } catch (e) {
@@ -101,7 +101,7 @@ function generateTestTable(): Tablify.Table {
     }
     table.addRow("temp1");
     table.addRow("temp2").remove();
-    table.addRow({ rowId: "invisible", content: "invisible", visible: false }, 500);
+    table.addRow({ rowId: "invisible", content: "invisible", visible: false }, null, 500);
     
     try {
         table.removeRow("noExistingRow");
@@ -142,14 +142,64 @@ function generateTestTable(): Tablify.Table {
 }
 
 
-
-
-
-
-
-
-
-
+function checkTableLinkage(t: Tablify.Table) {
+    (function checkRowLinkage(t: Tablify.Table) {
+        var rowNr = 0;
+        var it;
+        for (; ;) {
+            it = t.getRow(rowNr);
+            if (it === null) {
+                break;
+            }
+            if (it.rowPos !== rowNr) {
+                console.error("Invalid linkage: Row nr. " + rowNr + " has wrong rowPos.", it.rowPos);
+                return;
+            }
+            if ((rowNr === 0 && it.up() !== null) || (rowNr !== 0 && it.up() !== t.getRow(rowNr - 1))) {
+                console.error("Invalid linkage: Row nr. " + rowNr + " has wrong upper-pointer.", it.up());
+                return;
+            }
+            if (it.down() !== t.getRow(rowNr + 1)) {
+                console.error("Invalid linkage: Row nr. " + rowNr + " has wrong lower-pointer.", it.down());
+                return;
+            }
+            rowNr++;
+        }
+        if (t.getRowCount() !== rowNr) {
+            console.error("Invalid linkage: rowcount-exception.");
+            return;
+        }
+        console.log("Everything ok - checked " + rowNr + " rows.");
+    })(t);
+    (function checkColumnLinkage(t: Tablify.Table) {
+        var colNr = 0;
+        var it: Tablify.Column;
+        for (; ;) {
+            it = t.getColumn(colNr);
+            if (it === null) {
+                break;
+            }
+            if (it.columnPos !== colNr) {
+                console.error("Invalid linkage: Column nr. " + colNr + " has wrong columnPos.", it.columnPos);
+                return;
+            }
+            if ((colNr === 0 && it.left() !== null) || (colNr !== 0 && it.left() !== t.getColumn(colNr - 1))) {
+                console.error("Invalid linkage: Column nr. " + colNr + " has wrong upper-pointer.", it.left());
+                return;
+            }
+            if (it.right() !== t.getColumn(colNr + 1)) {
+                console.error("Invalid linkage: Column nr. " + colNr + " has wrong lower-pointer.", it.right());
+                return;
+            }
+            colNr++;
+        }
+        if (t.getColumnCount() !== colNr) {
+            console.error("Invalid linkage: columncount-exception.");
+            return;
+        }
+        console.log("Everything ok - checked " + colNr + " columns.");
+    })(t);
+}
 
 
 window.onload = () => {
@@ -161,10 +211,12 @@ window.onload = () => {
         console.error("jQuery must not be accessed with $");
         return null;
     }
-
         
+    
+    
     var table = generateTestTable();
     window["tt"] = table;
+    checkTableLinkage(table);
 
     var tableCopy = new Tablify.Table(table.toObject(false), "#content");
     
