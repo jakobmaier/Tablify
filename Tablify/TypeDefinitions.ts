@@ -100,7 +100,7 @@ module Tablify {
     };
 
     export type RowDefinition = string | RowDefinitionDetails | Row | RowDescription;
-    export type RowPositionDefinition = string|number|Row;          //Is used to specify the position for a row (string can either be "top" or "bottom")
+    export type RowPositionDefinition = string|number|Row;          //Is used to specify the position for a row (string can either be "top" or "bottom"). In case of relative positioning, it can also be "up", "down", "+1", "-4", ...
     
 //Creating Tables from JSON:
     export type TableDefinitionDetails = {

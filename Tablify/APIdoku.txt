@@ -35,13 +35,15 @@ Table (Manages exacly one HTMLTableElement)
     appendTo                (target: Selector): Table                                               // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
     prependTo               (target: Selector): Table                                               // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
-    addColumn               (columnDef?: ColumnDefinition, columnPosDef?: ColumnPositionDefinition, animate?: AnimationSettings): Column     // Adds a new column to the table.
-    addRow                  (rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row              // Adds a new row to the table
-    addTitleRow             (rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a titleRow.
-    addBodyRow              (rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a bodyRow.
-    addFooterRow            (rowDef?: RowDefinition, rowPosDef?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a footerRow.
+    addColumn               (columnDef?: ColumnDefinition, target?: ColumnPositionDefinition, animate?: AnimationSettings): Column     // Adds a new column to the table.
+    addRow                  (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Adds a new row to the table
+    addTitleRow             (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a titleRow.
+    addBodyRow              (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a bodyRow.
+    addFooterRow            (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a footerRow.
 
-    getRowPosition          (identifier: string|Row): number                                        // Returns the position of a specific row within the table. (=index).
+    getRowPosition          (identifier: string|number|Row): number                                 // Returns the relative (zero-based) position of a specific row within its section.
+    getAbsoluteRowPosition  (identifier: string|Row): number                                        // Returns the absolute (zero-based) position of a specific row within the table.
+    convertToAbsoluteRowPosition (rowType: RowType, relativePos: number): number                    // Converts the given relative row position into an absolute row position
     getColumnPosition       (identifier: string|Column): number                                     // Returns the position of a specific column within the table. (=index).
 
     removeRow               (identifier: string|number|Row, animate?: AnimationSettings): Table     // Removes the specified row.
@@ -51,15 +53,21 @@ Table (Manages exacly one HTMLTableElement)
     getRow                  (identifier: string|number|Row): Row                                    // Returns the required row. A row contains all cells.
     getFirstRow             (rowType?: RowType): Row                                                // Returns the first row within the table or table section (title/body/footer).
     getLastRow              (rowType?: RowType): Row                                                // Returns the last row within the table or table section (title/body/footer).
+    getBodyRow              (position: number): Row                                                 // Returns the body row with the given index.
 
     eachRow                 (func: (Row)=>void|boolean): Table                                      // Calls func for each row in the table. If func returns false, iterating will be aborted.
+    eachRow                 (rowType: RowType, func: (Row) => void|boolean)                         // Calls func for each row in the table. If func returns false, iterating will be aborted.
     getColumns              (): Column[]                                                            // Returns all columns within the table.
     getColumn               (identifier: string|number|Column): Column                              // Returns the required column. The column does not contains cells.
     eachColumn              (func: (Column) => void|boolean): Table                                 // Calls func for each column in the table. If func returns false, iterating will be aborted.
-    getColumnCells          (identifier: string|number|Column): { [key: string]: Cell; }            // Returns all cells of a sepcific column.
+    getColumnCells          (identifier: string|number|Column, rowType?: RowType): { [key: string]: Cell; }     // Returns all cells of a sepcific column.
     getCell                 (columnIdentifier: string|number|Column, rowIdentifier: string|number|Row): Cell    // Returns the specified cell.
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
-    getColumnCount          (): number                                                              // Returns the number of columns in the table
+    getRowOrder             (rowType?: RowType): string[]                                           // Retuns the order of the table rows.
+    getColumnCount          (): number                                                              // Returns the number of columns in the table.
+    getColumnOrder          (rowType?: RowType): string[]                                           // Returns the order of the table columns.
+
+    moveRow                 (identifier: string|Row, position: RowPositionDefinition): Table        // Moves a row to another position within the table
 
     stop                    (): Table                                                               // Stops any active show/hide animation in this and any nested table.
 
@@ -83,6 +91,11 @@ Row (Manages exacly one row within a Table)
 
     up                      (): Row                                                                 // Returns the row which is above this one.
     down                    (): Row                                                                 // Returns the row which is below this one.
+
+    move                    (position: RowPositionDefinition): Row                                  // Moves the row to another position within the table
+
+    getPosition             (): number                                                              // Returns the (zero-based) position of this row within its section.
+    getAbsolutePosition     (): number                                                              // Returns the (zero-based) absolute position of this row within the whole table.
 
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this row
     getCell                 (column: string|number|Column): Cell                                    // Returns the cell of a sepcific column.

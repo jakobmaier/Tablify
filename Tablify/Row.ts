@@ -191,6 +191,32 @@ module Tablify {
         down(): Row {
             return this.lowerRow;
         }
+        
+        /**
+         * Moves the row to another position within the table
+         * @position        RowPositionDefinition       Defines the position, where the row should be moved to. Same as "moveRow()" in Table
+         * @return          Row                         This row
+         */
+        move(position: RowPositionDefinition): Row {
+            this.table.moveRow(this, position);
+            return this;
+        }
+
+        /*
+         * Returns the (zero-based) position of this row within its section.
+         * 0 = first row
+         */
+        getPosition(): number {
+            return this.table.getRowPosition(this);
+        }
+
+        /*
+         * Returns the (zero-based) absolute position of this row within the whole table.
+         * 0 = first row in table.
+         */
+        getAbsolutePosition(): number {
+            return this.table.getAbsoluteRowPosition(this);
+        }
 
         /*
          * [Internal]

@@ -136,6 +136,16 @@ module Tablify {
 
     /*
      * [Internal]
+     * Returns the type of the HTMLElement in lower case
+     * @elem        Element         Element whose type (eg. "div") should be returned
+     * @return      String          Element type (=tag name) in lower case characters. eg. "div", "table", "span"
+     */
+    export function getElementType(elem: Element): String {
+        return elem.nodeName.toLowerCase();
+    }
+
+    /*
+     * [Internal]
      * Resolves a Selector and returns the appropiate JQuery Object.
      * If the selector doesn't reference exacly ONE Element, null is being returned.
      * @selector    string      JQuery selector string

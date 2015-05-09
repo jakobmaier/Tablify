@@ -5,6 +5,13 @@
 module Tablify {
     "use strict";
 
+
+    //Shortcut during development
+    export function l(...args: any[]): void {
+        console.log.apply(console, arguments);
+    }
+
+
     interface ILogger {
         debug(...args: any[]): void;
         log(...args: any[]): void;

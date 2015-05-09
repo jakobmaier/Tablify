@@ -112,6 +112,9 @@ function generateTestTable(): Tablify.Table {
         table.removeRow("temp1");
     }
         
+   
+
+
     console.log("Table show/hide animation test: Change the speed by setting the variable 'speed', stop the animation by setting 'stop' to true");
     window["speed"] = 100;
     window["stop"] = false;
@@ -141,11 +144,17 @@ function generateTestTable(): Tablify.Table {
     return table;
 }
 
+/*
+ * Performs a deep copy of the given object
+ */
+function deepCopy(obj: any): any {
+    return jQuery.extend(true, {}, obj);
+}
 
 function checkTableLinkage(t: Tablify.Table) {
     (function checkRowLinkage(t: Tablify.Table) {
         var rowNr = 0;
-        var it;
+        var it: Tablify.Row;
         for (; ;) {
             it = t.getRow(rowNr);
             if (it === null) {
@@ -163,6 +172,33 @@ function checkTableLinkage(t: Tablify.Table) {
                 console.error("Invalid linkage: Row nr. " + rowNr + " has wrong lower-pointer.", it.down());
                 return;
             }
+            //Check html:
+                //Check parent element
+                var name: String = Tablify.getElementType(it.element.parent()[0]);
+                var nameShouldBe;
+                switch (it.rowType) {
+                    case Tablify.RowType.title:  nameShouldBe = "thead"; break;
+                    case Tablify.RowType.body:   nameShouldBe = "tbody"; break;
+                    case Tablify.RowType.footer: nameShouldBe = "tfoot"; break;
+                }
+                if (name !== nameShouldBe) {
+                    console.error("HTML error: Row nr. " + rowNr + " is in the wrong part of the table. It's parent-element is wrong.");
+                    return;
+                }
+                //Check previous sibling (=row)
+                var prevSibling = it.element.prev();
+
+            
+                if (prevSibling.length == 0) {      //No previous sibling
+                    if (rowNr != 0 && it.rowType === it.up().rowType) {
+                        console.error("HTML error: Row nr. " + rowNr + " is at the wrong position. It should have a previous sibiling but doesn't.");
+                        return;
+                    }
+                }
+                if (prevSibling.length !== 0 && prevSibling[0] !== it.up().element[0]) {
+                    console.error("HTML error: Row nr. " + rowNr + " is at the wrong position. The previous (upper) row does not match its internal state.");
+                    return;
+                }
             rowNr++;
         }
         if (t.getRowCount() !== rowNr) {
@@ -202,6 +238,43 @@ function checkTableLinkage(t: Tablify.Table) {
 }
 
 
+function performRowOrderTest() {
+    var table = new Tablify.Table();
+    table.addColumn({
+        columnId: "Column 2",
+        defaultTitleContent: "T",
+        defaultBodyContent: "B",
+        defaultFooterContent: "F"
+    });
+    
+    table.addTitleRow("T");
+    table.addBodyRow("B");
+    table.addFooterRow("F");
+    console.log("---");
+    
+    table.addBodyRow({ rowId: "a", content: "a" }, 0);
+    table.addBodyRow({ rowId: "b", content: "b" }, 2);
+    table.addBodyRow({ rowId: "c", content: "c" }, 1);
+    table.addBodyRow({ rowId: "d", content: "d" }, 4);
+    table.addBodyRow({ rowId: "e", content: "e" }, 8);
+    table.addBodyRow({ rowId: "f", content: "f" }, -12);
+    table.addBodyRow({ rowId: "g", content: "g" }, -1);         // TfacBbdegF
+    table.addBodyRow({ rowId: "h", content: "h" }, "top");
+    table.addBodyRow({ rowId: "i", content: "i" }, "bottom");   // ThfacBbdegiF
+    checkTableLinkage(table);
+    table.getBodyRow(0).move(1);
+    table.getBodyRow(0).move(-1);
+    table.getBodyRow(3).move("-1");
+    table.getBodyRow(8).move("bottom").move("+1");
+    table.getBodyRow(4).move("top");
+    table.getBodyRow(6).move(6);
+    table.getBodyRow(5).move(table.getBodyRow(7));  //TbhaBcegdfiF
+    checkTableLinkage(table);
+    if (table.getRowOrder().join("") !== "TbhaBcegdfiF") {
+        console.error("performRowOrderTest failed - order was \"" + table.getRowOrder().join("")+"\"");
+    }
+}
+
 window.onload = () => {
     "use strict";
 
@@ -213,7 +286,9 @@ window.onload = () => {
     }
         
     
-    
+    performRowOrderTest();
+
+
     var table = generateTestTable();
     window["tt"] = table;
     checkTableLinkage(table);
