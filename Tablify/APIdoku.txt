@@ -64,8 +64,10 @@ Table (Manages exacly one HTMLTableElement)
     getCell                 (columnIdentifier: string|number|Column, rowIdentifier: string|number|Row): Cell    // Returns the specified cell.
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
     getRowOrder             (rowType?: RowType): string[]                                           // Retuns the order of the table rows.
+    orderRows               (order: string[]): Table                                                // Orders the rows according to the given array. If the array contains rowIds that do not exist, they are ignored.
     getColumnCount          (): number                                                              // Returns the number of columns in the table.
     getColumnOrder          (rowType?: RowType): string[]                                           // Returns the order of the table columns.
+    orderColumns            (order: string[]): Table                                                // Orders the columns according to the given array. If the array contains columnIds that do not exist, they are ignored.
 
     moveRow                 (identifier: string|Row, position: RowPositionDefinition): Table        // Moves a row to another position within the table
     moveColumn              (identifier: string|Column, position: ColumnPositionDefinition): Table  // Moves a column to another position within the table

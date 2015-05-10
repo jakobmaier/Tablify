@@ -1014,6 +1014,26 @@ module Tablify {
         }
 
         /*
+         * Orders the rows according to the given array. If the array contains rowIds that do not exist, they are ignored.
+         * If the array is missing existing rows, they will be moved to the end. Their order is preserved.
+         * @order       string[]            Array of rowIds that symbolise the row order
+         * @return      Table               This table
+         */
+        orderRows(order: string[]): Table {
+            var pos = {};    //position for title - body - footer
+            for (var i = 0; i < order.length; ++i) {
+                var row = this.rows[order[i]];
+                if (row) {   //If the index does not exist, we skip it
+                    pos[row.rowType] = pos[row.rowType] || 0;
+                    var newPos = pos[row.rowType]++; 
+                    this.moveRow(row, newPos);
+                }
+            }
+            return this;
+        }
+
+
+        /*
          * Returns the number of columns in the table.
          * @return      number      The number of columns within the table
          */
@@ -1033,6 +1053,23 @@ module Tablify {
             return order;
         }
         
+        /*
+         * Orders the columns according to the given array. If the array contains columnIds that do not exist, they are ignored.
+         * If the array is missing existing columns, they will be moved to the end. Their order is preserved.
+         * @order       string[]            Array of columnIds that symbolise the column order
+         * @return      Table               This table
+         */
+        orderColumns(order: string[]): Table {
+            var pos = 0;
+            for (var i = 0; i < order.length; ++i) {
+                var column = this.columns[order[i]];
+                if (column) {   //If the index does not exist, we skip it
+                    this.moveColumn(column, pos++);
+                }
+            }
+            return this;
+        }
+
         /**
          * Moves a row to another position within the table
          * @identifier      string                  rowId of the row to reorder

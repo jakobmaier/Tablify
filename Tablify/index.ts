@@ -290,8 +290,16 @@ function performRowOrderTest() {
     table.getBodyRow(3).move("down");               //TbhcBaedgfiF    
     checkTableLinkage(table);
     if (table.getRowOrder().join("") !== "TbhcBaedgfiF") {
-        console.error("performRowOrderTest failed - order was \"" + table.getRowOrder().join("")+"\"");
+        console.error("performRowOrderTest failed - order 1 was \"" + table.getRowOrder().join("")+"\"");
     }
+
+    table.orderRows(<any>"B853Ted4692iFb1a7fg");    //h and c are missing and should be moved to the back
+    checkTableLinkage(table);
+    if (table.getRowOrder().join("") !== "TBedibafghcF") {
+        console.error("performRowOrderTest failed - order 2 was \"" + table.getRowOrder().join("") + "\"");
+    }
+    
+    window["r"] = table;
 }
 
 
@@ -325,8 +333,16 @@ function performColumnOrderTest() {
 
     checkTableLinkage(table);
     if (table.getColumnOrder().join("") !== "hfdbageic") {
-        console.error("performColumnOrderTest failed - order was \"" + table.getColumnOrder().join("") + "\"");
+        console.error("performColumnOrderTest failed - order 1 was \"" + table.getColumnOrder().join("") + "\"");
     }
+
+    table.orderColumns(table.getColumnOrder().sort())
+    checkTableLinkage(table);
+    if (table.getColumnOrder().join("") !== "abcdefghi") {
+        console.error("performColumnOrderTest failed - order 2 was \"" + table.getColumnOrder().join("") + "\"");
+    }
+
+    window["c"] = table;
 }
 
 window.onload = () => {
