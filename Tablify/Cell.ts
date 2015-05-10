@@ -4,6 +4,9 @@ module Tablify {
     "use strict";
 
     export class Cell {
+        //The following variables are managed by the row:
+        /*[Readonly]*/ row: Row;                    //The row where this cell belongs to.
+        /*[Readonly]*/ column: Column;              //the column where this cell belongs to.
 
         /*[Readonly]*/ element: JQuery = null;              //References the <th>/<td>-element.
         /*[Readonly]*/ _content: CellContent;               //content of the cell.
@@ -24,6 +27,10 @@ module Tablify {
             }
             this.updateHtmlCellContent();
         }
+
+        private rowSpan: number;
+        private colSpan: number;
+
 
 
         static defaultCellDefinitionDetails: CellDefinitionDetails = {  //Default options that are used in the constructor, if the user omitted them.
@@ -58,6 +65,8 @@ module Tablify {
             } else {    //TableDescription
                 this._content = new Table(<TableDescription>definition.content);
             }
+            this.rowSpan = 1;
+            this.colSpan = 1;
             /*attributes...*/
 
             if (arguments.length < 3) {
@@ -101,7 +110,7 @@ module Tablify {
             
             return jQuery.extend({}, Cell.defaultCellDefinitionDetails, details);
         }
-                        
+                      
         /*
          * Generates the DOM representation for this cell. Called by the constructor.
          * @rowType     RowType     RowType of the row this cell belongs to. Needed to distinguish between "th" for title rows and "td" for body and footer rows.
@@ -128,6 +137,68 @@ module Tablify {
             }
         }
         
+        /*
+         * Returns the cell above this one
+         * @return      Cell        The cell above this one. null if this cell is within the first row
+         */
+        up(): Cell {
+            var upperRow: Row = this.row.up();
+            if (upperRow == null) {
+                return null;
+            }
+            return upperRow.getCell(this.column);
+        }
+
+        /*
+         * Returns the cell below this one
+         * @return      Cell        The cell below this one. null if this cell is within the last row
+         */
+        down(): Cell {
+            var lowerRow: Row = this.row.down();
+            if (lowerRow == null) {
+                return null;
+            }
+            return lowerRow.getCell(this.column);
+        }
+
+        /*
+         * Returns the cell to the right of this one
+         * @return      Cell        The cell to the right of this one. null if this cell is within the last column
+         */
+        right(): Cell {
+            var rightColumn: Column = this.column.right();
+            if (rightColumn == null) {
+                return null;
+            }
+            return rightColumn.getCell(this.row);
+        }
+
+        /*
+        * Returns the cell to the left of this one
+        * @return      Cell        The cell to the left of this one. null if this cell is within the first column
+        */
+        left(): Cell {
+            var leftColumn: Column = this.column.left();
+            if (leftColumn == null) {
+                return null;
+            }
+            return leftColumn.getCell(this.row);
+        }
+
+
+        isMultiCell(): boolean {
+            return this.rowSpan != 1 || this.colSpan != 1;
+        }
+
+        setMultiCell(colSpan, rowSpan): void {
+            this.element.attr("rowspan", rowSpan);
+            this.element.attr("colspan", colSpan);
+            //SO - ICH BIN HIER.
+            //Hab nur mal die 2 span- variablen angelegt 
+            //und mich darum gekümmert dass jede cell weiß zu welcher row und column sie gehört
+
+        }
+
         /*
          * Converts the Cell into an object. Used for serialisation.
          * Performs a deepCopy - if the cell contains a Table, that table is converted to.

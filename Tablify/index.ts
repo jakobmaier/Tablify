@@ -222,11 +222,11 @@ function checkTableLinkage(t: Tablify.Table) {
                 return;
             }
             if ((colNr === 0 && it.left() !== null) || (colNr !== 0 && it.left() !== t.getColumn(colNr - 1))) {
-                console.error("Invalid linkage: Column nr. " + colNr + " has wrong upper-pointer.", it.left());
+                console.error("Invalid linkage: Column nr. " + colNr + " has wrong left-pointer.", it.left());
                 return;
             }
             if (it.right() !== t.getColumn(colNr + 1)) {
-                console.error("Invalid linkage: Column nr. " + colNr + " has wrong lower-pointer.", it.right());
+                console.error("Invalid linkage: Column nr. " + colNr + " has wrong right-pointer.", it.right());
                 return;
             }
             //Check html:
@@ -254,6 +254,63 @@ function checkTableLinkage(t: Tablify.Table) {
         console.log("Everything ok - checked " + colNr + " columns.");
     })(t);
 }
+
+
+
+
+
+
+
+
+
+
+function checkTableSanity(t: Tablify.Table) {
+    t.eachRow(function (row: Tablify.Row) {
+        if (row.table !== t) {
+            console.error("Invalid linkage: The row \"" + row.rowId + "\" doesn't reference it's parent table.");
+            return;
+        }
+        row.eachCell(function (cell: Tablify.Cell) {
+            if (cell.row !== row) {
+                console.error("Invalid linkage: The cell in row \"" + row.rowId + "\" and column \"" + cell.column + "\" (?) doesn't reference it's parent row.");
+                return;
+            }
+        });
+    });
+    t.eachColumn(function (col: Tablify.Column) {
+        if (col.table !== t) {
+            console.error("Invalid linkage: The column \"" + col.columnId + "\" doesn't reference it's parent table.");
+            return;
+        }
+        col.eachCell(function (cell: Tablify.Cell) {
+            if (cell.column !== col) {
+                console.error("Invalid linkage: The cell in column \"" + col.columnId + "\" and row \"" + cell.row + "\" (?) doesn't reference it's parent column.");
+                return;
+            }
+        });
+    });
+    console.log("Everything ok.");
+}
+
+
+
+
+
+function CHECK_ALL_TABLES() {
+    Tablify.tableStore.eachTable(function (table) {
+        console.info("Checking table " + table.tableId + "...", table);
+        checkTableSanity(table);
+        checkTableLinkage(table);
+    });
+}
+
+
+
+
+
+
+
+
 
 
 function performRowOrderTest() {
@@ -378,14 +435,12 @@ window.onload = () => {
     var table = generateTestTable();
     window["tt"] = table;
     checkTableLinkage(table);
+    checkTableSanity(table);
 
-    return;
 
     var tableCopy = new Tablify.Table(table.toObject(false), "#content");
     
-    new Tablify.Table({columns: 5, rows: 5, titleRowCount: 1, footerRowCount: 3}, "#content");
-
-
+    window["i"] = new Tablify.Table({columns: 5, rows: 5, titleRowCount: 1, footerRowCount: 3}, "#content");
         
     var smallTable = new Tablify.Table({
         "rows": [{
@@ -452,6 +507,8 @@ window.onload = () => {
     }
             
     window["x"] = Tablify.tableStore.getTable("ttid2");
+
+    CHECK_ALL_TABLES();
 };
 
  

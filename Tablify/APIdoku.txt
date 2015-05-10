@@ -13,6 +13,8 @@ TableStore (Singleton)
     getTableByElement       (table: Selector): Table                                                // Returns the Table-instance that manages a specific HTMLTableElement. If the given HTMLElement is not managed by any Table instance, null is returned
     getTableById            (tableId: string): Table                                                // Returns the Table-instance with a specific id. If the id does not exist, null is returned
     getTable                (table: string|Selector): Table                                         // Returns the requested Table instance.
+    eachTable               (func: (Table) => void|boolean): TableStore                             // Calls func for each table on the page. If func returns false, iterating will be aborted.
+
 Eventhandlers:
     onTableRegistered       (table: Table) => void = null;                                          // Is called everytime a new table is initialised
     onTableUnregistered     (table: Table) => void = null;                                          // Is called everytime an existing table is destroyed
@@ -160,8 +162,14 @@ Cell
 ***********************************************************
     content                 string | JQuery | Table                                                 // content of the cell.
 
+    up                      (): Cell                                                                // Returns the cell above this one
+    down                    (): Cell                                                                // Returns the cell below this one
+    right                   (): Cell                                                                // Returns the cell to the right of this one
+    left                    (): Cell                                                                // Returns the cell to the left of this one
+
     toObject                (): CellDescription                                                     // Converts the Cell into an object. Used for serialisation.
     static defaultCellDefinitionDetails     CellDefinitionDetails                                   // Default options that are used in the constructor, if the user omitted them.
+
 
 
 

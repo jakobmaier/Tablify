@@ -102,13 +102,24 @@ module Tablify {
                         this.cells[columnId].element.hide();
                     }
                 }
-
-            }            
+            }
+            this.updateCellAssociations(columns);   //Associate newly generated cells with this row and its column
             this.visible = definition.visible
             this.generateDom();      //Generates the DOM representation of this row.
             /*attributes...*/
             if (!this.visible) {
                 this.hide();
+            }
+        }
+
+        /*
+         * Sets the row- and column references in each cell this row is responsible for
+         * @columns     Column[]        The currently existing columns in the table.
+         */
+        private updateCellAssociations(columns: { [key: string]: Column; }) {
+            for (var columnId in this.cells){
+                this.cells[columnId].row = this;
+                this.cells[columnId].column = columns[columnId];
             }
         }
 
@@ -232,7 +243,9 @@ module Tablify {
                 throw new OperationFailedException("addColumn()", "The row \"" + this.rowId + "\" has already a column with the id \"" + columnId + "\".");
             }
             var cell: Cell = new Cell(content, this, columnId);
-            this.cells[columnId] = cell;            
+            this.cells[columnId] = cell;
+            cell.row = this;
+            cell.column = column;        
 
             if (!column.isVisible()) {              //The column is currently not visible -> don't show the cell
                 cell.element.hide();
@@ -283,7 +296,7 @@ module Tablify {
             }
             return this.cells[<string>column] || null;
         }
-            
+                            
         /*
          * Calls func for each cell/column in the row. If func returns false, iterating will be aborted.
          * func is called in the same order as the columns in the table.

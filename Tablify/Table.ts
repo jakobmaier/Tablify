@@ -122,7 +122,7 @@ module Tablify {
             for (var i = 0; i < (<RowDescription[]>definition.rows).length; ++i) {
                 if (titleRowCount > i) {
                     this.addTitleRow(definition.rows[i], null, false);
-                } else if (footerRowCount > (<RowDescription[]>definition.rows).length - i) {
+                } else if (footerRowCount >= (<RowDescription[]>definition.rows).length - i) {
                     this.addFooterRow(definition.rows[i], null, false);
                 } else {
                     this.addRow(definition.rows[i], null, false);
@@ -397,6 +397,7 @@ module Tablify {
             if (row.rowId in this.rows) {
                 throw new OperationFailedException("addRow()", "There is already a row with the id \"" + row.rowId + "\" in the table.");
             }
+            l(position);
             this.integrateRow(position, row);       //Connects the row with it's neighbours                   
             //Add row to table:
             this.rows[row.rowId] = row;
@@ -409,7 +410,9 @@ module Tablify {
             //Add row to html:
             if (row.up() && row.up().rowType === row.rowType) {
                 row.element.insertAfter(row.up().element);
+                l("after");
             } else {
+                l("prepend");
                 switch (row.rowType) {
                     case RowType.title: this.thead.prepend(row.element); break;
                     case RowType.body: this.tbody.prepend(row.element); break;
@@ -476,6 +479,7 @@ module Tablify {
                 }
             } else {                            //Default = last row
                 relRowPos = maxPos;
+                l("maxPos = " + maxPos);
             }
             logger.debug("Moving row from position " + row.getPosition() + " --> " + relRowPos + " (max=" + maxPos + ")");
 
@@ -500,7 +504,10 @@ module Tablify {
             //Get neighbours:
             var lowerRow: Row = this.getRow(rowPos);
             var upperRow: Row = lowerRow ? lowerRow.up() : this.getRow(-1);
-                       
+            
+                      
+            l("neighbours: ", upperRow, lowerRow);
+             
             //Unravel existing connections:
             if (!isNewRow) {   //The row is already connected with others
                 var it: Row = row;
@@ -660,14 +667,14 @@ module Tablify {
          */
         getRow(identifier: string|number|Row): Row {
             if (typeof identifier === "number") {
-                var rowPos: number = identifier;                                //Needed because of TypeScript's wrong error messages
+                var rowPos: number = identifier;                                        //Needed because of TypeScript's wrong error messages
                 if (rowPos < 0) {
                     rowPos = this.getRowCount() + rowPos;
                 }
-                if (rowPos < this.getRowCount(RowType.title)) {                           //A titleRow should be returned
+                if (rowPos < this.getRowCount(RowType.title)) {                         //A titleRow should be returned
                     return this.titleRows[rowPos] || null;
                 }
-                if (identifier < this.getRowCount(RowType.title) + this.getRowCount(RowType.body)) {    //A bodyRow should be returned
+                if (rowPos < this.getRowCount(RowType.title) + this.getRowCount(RowType.body)) {    //A bodyRow should be returned
                     return this.bodyRows[rowPos - this.getRowCount(RowType.title)] || null;
                 }
                 return this.footerRows[rowPos - this.getRowCount(RowType.title) - this.getRowCount(RowType.body)] || null;   //A footerRow should be returned
@@ -982,6 +989,7 @@ module Tablify {
             return row.getCell(columnIdentifier);
         }
 
+
         /*
          * Returns the number of rows in the table or table section (title/body)
          * @rowType     RowType     optional; If no value is given, the total number of rows is returned. If "RowType.title" is given, the number of titleRows is returned. If "RowType.body" is given, the number of rows within the table body is returned.
@@ -1216,17 +1224,6 @@ module Tablify {
                 });
             }       
             
-            
-            
-            //if (row.down() && row.down().rowType === row.rowType) {
-            //    row.element.
-            //} else {
-            //    switch (row.rowType) {
-            //        case RowType.title: this.thead.append(row.element); break;
-            //        case RowType.body: this.tbody.append(row.element); break;
-            //        case RowType.footer: this.tfoot.append(row.element); break;
-            //    }
-            //}
             return this;
         }
 

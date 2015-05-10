@@ -58,6 +58,22 @@ module Tablify {
             return this.getTableByElement(table);   //JQuery / Element
         }
 
+
+        /*
+         * Calls func for each table on the page. If func returns false, iterating will be aborted.
+         * @func        (Table)=>boolean   Is called for each table on the page. Returns the Table as a parameter. If the iteration should be aborted, false can be returned.   
+         * @return      TableStore         Returns the tableStore
+         */
+        eachTable(func: (Table) => void|boolean): TableStore {
+            var self = this;
+            for (var i = 0; i < this.tableList.length; ++i) {
+                if (func(this.tableList[i]) === false) {
+                    return this;
+                }
+            }
+            return this;
+        }
+
         /*
          * [Internal]
          * Adds a table to the internal list
