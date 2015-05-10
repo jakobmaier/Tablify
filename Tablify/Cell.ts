@@ -6,7 +6,24 @@ module Tablify {
     export class Cell {
 
         /*[Readonly]*/ element: JQuery = null;              //References the <th>/<td>-element.
-        /*[Readonly]*/ content: CellContent;                //content of the cell.
+        /*[Readonly]*/ _content: CellContent;               //content of the cell.
+        get content(): CellContent {
+            return this._content;
+        }
+        set content(value: CellContent) {
+            if ((<any>this._content) instanceof Table) {    //Afterwards the table will not be nested anymore.
+                (<Table>this._content).parentCell = null;
+                //NOTE: the table will not be destroyed and can therefore cause memory leaks.
+                //The destroy() function can be called here, but in case the table is still needed by the user, there would be no going back. That's why I decided to not call it and leave it to the user.
+                //Hope this wasn't a bad choice.
+                logger.info("Overwritting cell content. The previous content was a nested table that is now detached. NOTE that the nested table is not destroyed and needs to be destroyed manually in order to avoid memory leaks.");
+            }
+            this._content = value;
+            if ((<any>value) instanceof Table) {
+                (<Table>value).parentCell = this;           //Inform the table that it is part of another one
+            }
+            this.updateHtmlCellContent();
+        }
 
 
         static defaultCellDefinitionDetails: CellDefinitionDetails = {  //Default options that are used in the constructor, if the user omitted them.
@@ -33,13 +50,13 @@ module Tablify {
             
             //The content can have the types  <CellContent | Element | TableDescription>, while CellContent = <string | JQuery | Table>
             if (isElement(definition.content)) {        //Element
-                this.content = jQuery(definition.content);
+                this._content = jQuery(definition.content);
             } else if (typeof definition.content === "string"
                     || <JQuery|Table|TableDescription>definition.content instanceof jQuery
                     || <JQuery|TableDescription>      definition.content instanceof Table) {
-                this.content = <string|JQuery|Table>definition.content;
+                this._content = <string|JQuery|Table>definition.content;
             } else {    //TableDescription
-                this.content = new Table(<TableDescription>definition.content);
+                this._content = new Table(<TableDescription>definition.content);
             }
             /*attributes...*/
 
@@ -49,8 +66,8 @@ module Tablify {
                 this.generateDom(row.rowType, columnId);    //Generates the DOM representation of this cell.
             }
 
-            if (<any>this.content instanceof Table) {
-                (<Table>this.content).parentCell = this;    //Inform the table that it is part of another one
+            if (<any>this._content instanceof Table) {
+                (<Table>this._content).parentCell = this;    //Inform the table that it is part of another one
             }
         }
         
@@ -93,11 +110,21 @@ module Tablify {
         private generateDom(rowType: RowType, columnId: string): void {   
             this.element = jQuery(document.createElement(rowType===RowType.title ? "th" : "td"));
             this.element.attr("data-columnId", columnId);
-            
-            if (typeof this.content === "string") {             //string
-                this.element.html(<string>this.content);
+            this.updateHtmlCellContent();
+        }
+
+        /*
+         * Updates the HTML representation of the cell.
+         * (Sets the HTML according to the content variable)
+         */
+        private updateHtmlCellContent(): void {
+            if (!this.element) {                                //No DOM generated yet
+                return;
+            }
+            if (typeof this._content === "string") {             //string
+                this.element.html(<string>this._content);
             } else {                                            //Table / JQuery
-                (</*Table|JQuery*/Table>this.content).appendTo(this.element);
+                (</*Table|JQuery*/Table>this._content).appendTo(this.element);
             }
         }
         
@@ -115,14 +142,14 @@ module Tablify {
             if (!includeContent) {
                 return description;
             }
-            if (typeof this.content === "string") {             //string
-                description.content = <string>this.content;
+            if (typeof this._content === "string") {             //string
+                description.content = <string>this._content;
                 description.contentType = CellContentType.string;
-            } else if (<any>this.content instanceof jQuery) {   //JQuery
-                description.content = (<JQuery>this.content).get(0).outerHTML;
+            } else if (<any>this._content instanceof jQuery) {   //JQuery
+                description.content = (<JQuery>this._content).get(0).outerHTML;
                 description.contentType = CellContentType.jquery;       //Is needed, so that the deserialisation process knows that the string should be converted into jQuery
             } else {                                            //Table
-                description.content = (<Table>this.content).toObject(includeContent);
+                description.content = (<Table>this._content).toObject(includeContent);
                 description.contentType = CellContentType.table;
             }
             return description;

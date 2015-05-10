@@ -184,8 +184,8 @@ module Tablify {
             this.table.removeAttr("data-tableId");
 
             if (this.parentCell) {  //This table is nested and part of a Cell that stores a Table reference -> change it into a not-manages Table
-                assert(this.parentCell.content === this);
-                this.parentCell.content = this.table;
+                assert(this.parentCell._content === this);
+                this.parentCell._content = this.table;
             }
             this.table = null;
         }
@@ -227,13 +227,7 @@ module Tablify {
          *                  ColumnDefinitionDetails     Contains detailed information on how to generate the new column.
          *                  Column                      The column will be deep-copied.
          *                  ColumnDescription           Used for deserialisation.
-         * @position        ColumnPositionDefinition    Position, where this column should be inserted.
-         *                  null                        inserted at the end (right)
-         *                  "left"                      The column will be inserted at the beginning (left)
-         *                  "right"                     The column will be inserted at the ending (right)
-         *                  positive number             Position for the column. If this position is not possible (number too big), it will be inserted at the ending (right)
-         *                  negative number             Position from the ending. -1: inserted at the end (right). -2: inserted at the second last. If this position is not possible (number too low), it will be inserted at the beginning (left)
-         *                  Column                      The column will be inserted before the given one.
+         * @position        ColumnPositionDefinition    Position, where this column should be inserted. See Table.integrateColumn().
          * @animate         null / undefined            Default options are used. The option can be changed with "Table.defaultAnimation"
          *                  AnimationSettings           Information about how to animate the insertion. false: no animation.
          * @return          Column                      Returns the newly generated Column.
@@ -300,56 +294,74 @@ module Tablify {
          * Integrates the column by identifying its position and neigbours and making left/right connections inbetween the columns
          * @position        ColumnPositionDefinition    Position, where this column should be inserted.
          *                  null                        inserted at the end (right)
-         *                  "left"                      The column will be inserted at the beginning (left)
-         *                  "right"                     The column will be inserted at the ending (right)
+         *                  "first"                     The column will be inserted at the beginning (left)
+         *                  "last"                      The column will be inserted at the ending (right)
          *                  positive number             Position for the column. If this position is not possible (number too big), it will be inserted at the ending (right)
          *                  negative number             Position from the ending. -1: inserted at the end (right). -2: inserted at the second last. If this position is not possible (number too low), it will be inserted at the beginning (left)
          *                  Column                      The column will be inserted before the given one.
          * @column          Column                      The column which should be inserted (not part of the table yet)
          */
         private integrateColumn(position: ColumnPositionDefinition, column: Column): void {
+            var isNewCol: boolean = typeof column.columnPos !== "number";     //If a new column should be integrated, or if an existing column should be moved
+
+            var maxPos = this.getColumnCount();
             var colPos: number;
-            var noWarn: boolean = false;
             if (typeof position === "string") {
                 switch (position.toLowerCase()) {
-                    case "left":    colPos = 0; break; //First column
-                    case "right":   colPos = this.getColumnCount(); break; //Last column
-                    default:
-                        logger.error("\"position\" contains an invalid string.");
-                        colPos = this.getColumnCount();
+                    case "first":   colPos = 0; break; //First column
+                    case "last":    colPos = maxPos; break; //Last column
+                    default:        logger.error("\"position\" contains an invalid string: \""+position+"\".");
+                                    if (!isNewCol){ return; }
+                                    colPos = maxPos;
                 }
-                noWarn = true;
             } else if (typeof position === "number") {
                 colPos = position;
-                if (colPos < 0) {       //-1 = after currently last Column
-                    colPos = this.getColumnCount() + 1 + colPos;
+                if (colPos < 0) {               //-1 = after currently last Column
+                    colPos = maxPos + 1 + colPos;
                 }
-            } else if (position) {
+            } else if (position) {              //insert before another column
                 if (position.table !== this) {
                     logger.error("The given column from \"position\" belongs to a different table.");
-                    colPos = this.getColumnCount();
-                    noWarn = true;
+                    if (!isNewCol) { return; }
+                    colPos = maxPos;
+                } else {
+                    colPos = position.columnPos;        //Insert on the left of the given column
+                    if (colPos > column.getPosition()) {    //Correction as the target row's position will be smaller after the row-to-move has been removed.
+                        --colPos;
+                    }
                 }
-                colPos = position.columnPos;    //Insert on the left of the given column
             } else {                                //Default = last column
-                colPos = this.getColumnCount();
-                noWarn = true;
+                colPos = maxPos;
             }
 
             //Check if the colPos is valid:
             if (colPos < 0) {
                 colPos = 0; 
-                if (!noWarn) { logger.warning("The given column position is too small. The column will be inserted at the beginning."); }
-            } else if (colPos > this.getColumnCount()) {
-                colPos = this.getColumnCount();
-                if (!noWarn) { logger.warning("The given column position is too big. The column will be inserted at the end."); }
+                logger.warning("The given column position is too small. The column will be inserted at the beginning.");
+            } else if (colPos > maxPos) {
+                colPos = maxPos;
+                logger.warning("The given column position is too big. The column will be inserted at the end.");
+            }
+
+            if (colPos === column.columnPos){
+                return;
             }
 
             //Get neighbours:
             var rightColumn: Column = this.getColumn(colPos);
             var leftColumn: Column = rightColumn ? rightColumn.left() : this.getColumn(-1);
 
-            //Insert the row:
+            //Unravel existing connections:
+            if (!isNewCol) {   //The column is already connected with others
+                var it: Column = column;
+                while ((it = it.right()) !== null) {
+                    --it.columnPos;
+                }
+                if (column.leftColumn) { column.leftColumn.rightColumn = column.rightColumn; }
+                if (column.rightColumn) { column.rightColumn.leftColumn = column.leftColumn; }
+            }
+
+            //Insert the column:
             column.leftColumn = leftColumn;
             column.rightColumn = rightColumn;
             column.columnPos = colPos;
@@ -442,7 +454,7 @@ module Tablify {
                 switch (position.toLowerCase()) {
                     case "top":     relRowPos = 0; break; //First row
                     case "bottom":  relRowPos = maxPos; break; //Last row
-                    default:        logger.error("\"position\" contains an invalid string.");
+                    default:        logger.error("\"position\" contains an invalid string: \"" + position +"\".");
                                     if(!isNewRow){ return; }
                                     relRowPos = maxPos;
                 }
@@ -454,11 +466,13 @@ module Tablify {
             } else if (position) {      //insert above another row
                 if (position.table !== this) {
                     logger.error("The given row from \"position\" belongs to a different table.");
-                    relRowPos = this.getRowCount();
                     if (!isNewRow) { return; }
                     relRowPos = maxPos;
                 } else {
-                    relRowPos = position.getPosition();  //Insert above the given row
+                    relRowPos = position.getPosition();     //Insert above the given row
+                    if (relRowPos > row.getPosition()) {    //Correction as the target row's position will be smaller after the row-to-move has been removed.
+                        --relRowPos;
+                    }
                 }
             } else {                            //Default = last row
                 relRowPos = maxPos;
@@ -1099,7 +1113,85 @@ module Tablify {
 
 
 
+        /**
+         * Moves a column to another position within the table
+         * @identifier      string                      columnId of the column to reorder
+         *                  Column                      The column to reorder
+         * @position        ColumnPositionDefinition    Defines the position, where the column should be moved to.
+         *                  "first":                    The column will be moved to the beginning.
+         *                  "last":                     The column will be moved to the ending.
+         *                  "left":                     The column is moved by 1 to the left.
+         *                  "right":                    The row is moved by 1 to the right.
+         *                  positive number:            New position for the column. If this position is not possible, the nearest possible position will be chosen.
+         *                  negative number:            New position from the ending. -1: inserted at the end. -2: inserted at the second last. If this position is not possible, the nearest possible position will be chosen.
+         *                  "+3", "-4"                  The column will be moved by a relative amount. "+" moves the column to the right, "-" moves it to the left. The sign is required.
+         *                  Column:                     The column will be moved in front of the given one.
+         * @return          Table                       This table
+         * @throws          OperationFailedException    Is thrown if the given column does not exist or is part of another table. 
+         */
+        moveColumn(identifier: string|Column, position: ColumnPositionDefinition): Table {
+            var col: Column= this.getColumn(identifier);
+            if (col === null) {
+                throw new OperationFailedException("moveColumn()", "The column does not exist in this table.");
+            }
 
+            //Handle relative movements:
+            var colPos: ColumnPositionDefinition = position;
+            if (typeof position === "string") {
+                switch (position.toLowerCase()) {
+                    case "left": colPos = col.getPosition() - 1;
+                        if (colPos < 0) { colPos = 0; }
+                        break;
+                    case "right": colPos = col.getPosition() + 1;
+                        break;
+                    default:
+                        if (position[0] === '+' || position[0] === '-') {
+                            var delta: number = parseInt(position, 10);
+                            if (isNaN(delta)) {
+                                logger.error("Unable to interpret the target position. parseInt() failed.");
+                                return this;
+                            }
+                            colPos = col.getPosition() + delta;
+                            if (colPos < 0) { colPos = 0; }
+                        }
+                }
+            }
+          
+            //Remove from old position:
+            this.sortedColumns.splice(col.columnPos, 1);
+            
+            //Update the row position and its neighbours:           
+            this.integrateColumn(colPos, col);
+
+            //Insert at new position:
+            this.sortedColumns.splice(col.columnPos, 0, col);
+
+            //Update the HTML:
+            var right: Column;
+            if (right = col.right()) {
+                this.eachRow(function (row: Row) {
+                    var c = row.getCell(right);
+                    col.getCell(row).element.insertBefore(c.element);
+                });
+            } else {
+                this.eachRow(function (row: Row) {
+                    row.element.append(col.getCell(row).element);
+                });
+            }       
+            
+            
+            
+            //if (row.down() && row.down().rowType === row.rowType) {
+            //    row.element.
+            //} else {
+            //    switch (row.rowType) {
+            //        case RowType.title: this.thead.append(row.element); break;
+            //        case RowType.body: this.tbody.append(row.element); break;
+            //        case RowType.footer: this.tfoot.append(row.element); break;
+            //    }
+            //}
+            return this;
+        }
 
 
 

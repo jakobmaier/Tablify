@@ -87,7 +87,7 @@ module Tablify {
     };
 
     export type ColumnDefinition = string | ColumnDefinitionDetails | Column | ColumnDescription;
-    export type ColumnPositionDefinition = string|number|Column;    //Is used to specify the position for a column (string can either be "left" or "right")
+    export type ColumnPositionDefinition = string|number|Column;    //Is used to specify the position for a column (string can either be "first" or "last"). In case of relative positioning, it can also be "left" or "right", "+1", "-4", ...
 
 //Adding new Rows to an existing Table:
     export type RowDefinitionDetails = {

@@ -143,9 +143,10 @@ module Tablify {
             this.element = jQuery(document.createElement("tr"));
             this.element.attr("data-rowId", this.rowId);
             
-            for (var columnId in this.cells) {
-                this.element.append(this.cells[columnId].element);
-            }
+            var self = this;
+            this.table.eachColumn(function (column: Column): void {
+                self.element.append(self.cells[column.columnId].element);
+            });
         }
 
         /*
@@ -204,7 +205,7 @@ module Tablify {
 
         /*
          * Returns the (zero-based) position of this row within its section.
-         * 0 = first row
+         * @return      number          Position of this row. 0 = first row within its section
          */
         getPosition(): number {
             return this.table.getRowPosition(this);
@@ -212,7 +213,7 @@ module Tablify {
 
         /*
          * Returns the (zero-based) absolute position of this row within the whole table.
-         * 0 = first row in table.
+         * @return      number          Position of this row. 0 = first row within the table
          */
         getAbsolutePosition(): number {
             return this.table.getAbsoluteRowPosition(this);

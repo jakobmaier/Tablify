@@ -119,6 +119,24 @@ module Tablify {
             return this.rightColumn;
         }
 
+        /**
+         * Moves the column to another position within the table
+         * @position        ColumnPositionDefinition    Defines the position, where the column should be moved to. Same as "moveColumn()" in Table
+         * @return          Column                      This column
+         */
+        move(position: ColumnPositionDefinition): Column {
+            this.table.moveColumn(this, position);
+            return this;
+        }
+
+        /*
+         * Returns the (zero-based) position of this column within the table.
+         * @return      number          Position of this column. 0 = left
+         */
+        getPosition(): number {
+            return this.table.getColumnPosition(this);
+        }
+
         /*
          * Returns the cell of a sepcific row.
          * @row             string                      Returns the cell of the row with the given rowId. If the row doesn't exist, null is returned

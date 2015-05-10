@@ -85,7 +85,7 @@ function generateTestTable(): Tablify.Table {
             "row4": new Tablify.Table(table.toObject(true))
         },
         generateMissingRows: true
-    }, "right");
+    }, "last");
     Tablify.Cell.defaultCellDefinitionDetails.content = "";
 
     table.addColumn("temp1", 2);
@@ -102,7 +102,9 @@ function generateTestTable(): Tablify.Table {
     table.addRow("temp1");
     table.addRow("temp2").remove();
     table.addRow({ rowId: "invisible", content: "invisible", visible: false }, null, 500);
-    
+    //.getCell("invisible").content = "INVIS";
+
+
     try {
         table.removeRow("noExistingRow");
     } catch (e) {
@@ -192,12 +194,12 @@ function checkTableLinkage(t: Tablify.Table) {
                 if (prevSibling.length == 0) {      //No previous sibling
                     if (rowNr != 0 && it.rowType === it.up().rowType) {
                         console.error("HTML error: Row nr. " + rowNr + " is at the wrong position. It should have a previous sibiling but doesn't.");
-                        return;
+                        continue;
                     }
                 }
                 if (prevSibling.length !== 0 && prevSibling[0] !== it.up().element[0]) {
                     console.error("HTML error: Row nr. " + rowNr + " is at the wrong position. The previous (upper) row does not match its internal state.");
-                    return;
+                    continue;
                 }
             rowNr++;
         }
@@ -227,6 +229,22 @@ function checkTableLinkage(t: Tablify.Table) {
                 console.error("Invalid linkage: Column nr. " + colNr + " has wrong lower-pointer.", it.right());
                 return;
             }
+            //Check html:
+                t.eachRow(function (row: Tablify.Row): boolean {
+                    var c = row.getCell(it);
+                    //Check previous sibling (=row)
+                    var prevSibling = c.element.prev();
+                    if (prevSibling.length == 0) {      //No previous sibling
+                        if (colNr != 0) {
+                            console.error("HTML error: Column nr. " + colNr + " (RowId. " + row.rowId + ") is at the wrong position. It should have a previous sibiling but doesn't.");
+                            return;
+                        }
+                    }
+                    if (prevSibling.length !== 0 && prevSibling[0] !== it.left().getCell(row).element[0]) {
+                        console.error("HTML error: Column nr. " + colNr + " (RowId. " + row.rowId + ") is at the wrong position. The previous (left) column does not match its internal state.");
+                        return;
+                    }
+                });       
             colNr++;
         }
         if (t.getColumnCount() !== colNr) {
@@ -239,9 +257,8 @@ function checkTableLinkage(t: Tablify.Table) {
 
 
 function performRowOrderTest() {
-    var table = new Tablify.Table();
+    var table = new Tablify.Table(/** / "#content" /**/);
     table.addColumn({
-        columnId: "Column 2",
         defaultTitleContent: "T",
         defaultBodyContent: "B",
         defaultFooterContent: "F"
@@ -263,15 +280,52 @@ function performRowOrderTest() {
     table.addBodyRow({ rowId: "i", content: "i" }, "bottom");   // ThfacBbdegiF
     checkTableLinkage(table);
     table.getBodyRow(0).move(1);
-    table.getBodyRow(0).move(-1);
-    table.getBodyRow(3).move("-1");
-    table.getBodyRow(8).move("bottom").move("+1");
-    table.getBodyRow(4).move("top");
+    table.getBodyRow(0).move(-1);                   //ThacBbdegifF
+    table.getBodyRow(3).move("-1");                 //ThaBcbdegifF
+    table.getBodyRow(8).move("bottom").move("+1");  //ThaBcbdegfiF
+    table.getBodyRow(4).move("top");                //TbhaBcdegfiF
     table.getBodyRow(6).move(6);
-    table.getBodyRow(5).move(table.getBodyRow(7));  //TbhaBcegdfiF
+    table.getBodyRow(5).move(table.getBodyRow(7));  //TbhaBcedgfiF
+    table.getBodyRow(4).move("up").move("up");      //TbhcaBedgfiF
+    table.getBodyRow(3).move("down");               //TbhcBaedgfiF    
     checkTableLinkage(table);
-    if (table.getRowOrder().join("") !== "TbhaBcegdfiF") {
+    if (table.getRowOrder().join("") !== "TbhcBaedgfiF") {
         console.error("performRowOrderTest failed - order was \"" + table.getRowOrder().join("")+"\"");
+    }
+}
+
+
+function performColumnOrderTest() {
+    var table = new Tablify.Table(/** / "#content" /**/);
+
+    table.addBodyRow();
+    table.addBodyRow();
+
+    table.addColumn({ columnId: "a", defaultBodyContent: "a" }, 0);
+    table.addColumn({ columnId: "b", defaultBodyContent: "b" }, 2);
+    table.addColumn({ columnId: "c", defaultBodyContent: "c" }, 1);
+    table.addColumn({ columnId: "d", defaultBodyContent: "d" }, 4);
+    table.addColumn({ columnId: "e", defaultBodyContent: "e" }, 8);
+    table.addColumn({ columnId: "f", defaultBodyContent: "f" }, -12);
+    table.addColumn({ columnId: "g", defaultBodyContent: "g" }, -1);       // facbdeg
+    table.addColumn({ columnId: "h", defaultBodyContent: "h" }, "first");
+    table.addColumn({ columnId: "i", defaultBodyContent: "i" }, "last");   // hfacbdegi
+    checkTableLinkage(table);
+    
+    table.getColumn(0).move(1);
+    table.getColumn(0).move(-1);
+    table.getColumn(3).move("-1");                  //habcdegif
+    table.getColumn(8).move("first").move("+1");    //hfabcdegi
+    table.getColumn(4).move("last");                //hfabdegic
+    table.getColumn(6).move(6);
+    table.getColumn(5).move(table.getColumn(7));    //hfabdgeic
+
+    table.getColumn(4).move("left").move("left");   //hfdabgeic
+    table.getColumn(3).move("right");               //hfdbageic   
+
+    checkTableLinkage(table);
+    if (table.getColumnOrder().join("") !== "hfdbageic") {
+        console.error("performColumnOrderTest failed - order was \"" + table.getColumnOrder().join("") + "\"");
     }
 }
 
@@ -287,11 +341,13 @@ window.onload = () => {
         
     
     performRowOrderTest();
-
+    performColumnOrderTest();
 
     var table = generateTestTable();
     window["tt"] = table;
     checkTableLinkage(table);
+
+    return;
 
     var tableCopy = new Tablify.Table(table.toObject(false), "#content");
     

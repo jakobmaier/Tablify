@@ -35,7 +35,7 @@ Table (Manages exacly one HTMLTableElement)
     appendTo                (target: Selector): Table                                               // Inserts the table at the end of the target. If the table is already part of the DOM, it will be moved rather than cloned.
     prependTo               (target: Selector): Table                                               // Inserts the table at the beginning of the target. If the table is already part of the DOM, it will be moved rather than cloned.
 
-    addColumn               (columnDef?: ColumnDefinition, target?: ColumnPositionDefinition, animate?: AnimationSettings): Column     // Adds a new column to the table.
+    addColumn               (columnDef?: ColumnDefinition, position?: ColumnPositionDefinition, animate?: AnimationSettings): Column     // Adds a new column to the table.
     addRow                  (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Adds a new row to the table
     addTitleRow             (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a titleRow.
     addBodyRow              (rowDef?: RowDefinition, position?: RowPositionDefinition, animate?: AnimationSettings): Row              // Same as "addRow", but the rowType is always a bodyRow.
@@ -68,6 +68,7 @@ Table (Manages exacly one HTMLTableElement)
     getColumnOrder          (rowType?: RowType): string[]                                           // Returns the order of the table columns.
 
     moveRow                 (identifier: string|Row, position: RowPositionDefinition): Table        // Moves a row to another position within the table
+    moveColumn              (identifier: string|Column, position: ColumnPositionDefinition): Table  // Moves a column to another position within the table
 
     stop                    (): Table                                                               // Stops any active show/hide animation in this and any nested table.
 
@@ -128,6 +129,10 @@ Column (Contains basic column Information, similar to a plain datatype)
     left                    (): Column                                                              // Returns the column to the left of this one
     right                   (): Column                                                              // Returns the column to the right of this one
 
+    move                    (position: ColumnPositionDefinition): Column                            // Moves the column to another position within the table
+
+    getPosition             (): number                                                              // Returns the (zero-based) position of this column within the table.
+
     getCell                 (row: string|number|Row): Cell                                          // Returns the cell of a sepcific row.
     getCells                (): { [key: string]: Cell; }                                            // Returns all cells of this column
     eachCell                (func: (Cell) => void|boolean): Column                                  // Calls func for each cell/row in the column. If func returns false, iterating will be aborted.
@@ -150,7 +155,7 @@ Column (Contains basic column Information, similar to a plain datatype)
 
 Cell
 ***********************************************************
-    content                 readonly string;                                                        // content of the cell. Might contain HTML.
+    content                 string | JQuery | Table                                                 // content of the cell.
 
     toObject                (): CellDescription                                                     // Converts the Cell into an object. Used for serialisation.
     static defaultCellDefinitionDetails     CellDefinitionDetails                                   // Default options that are used in the constructor, if the user omitted them.
