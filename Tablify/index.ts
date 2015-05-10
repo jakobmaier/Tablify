@@ -299,6 +299,14 @@ function performRowOrderTest() {
         console.error("performRowOrderTest failed - order 2 was \"" + table.getRowOrder().join("") + "\"");
     }
     
+    table.sortRows(function (a: Tablify.Row, b: Tablify.Row) {
+        return a.rowId < b.rowId;
+    });
+    checkTableLinkage(table);
+    if (table.getRowOrder().join("") !== "TBabcdefghiF") {
+        console.error("performRowOrderTest failed - order 3 was \"" + table.getRowOrder().join("") + "\"");
+    }
+
     window["r"] = table;
 }
 
@@ -340,6 +348,14 @@ function performColumnOrderTest() {
     checkTableLinkage(table);
     if (table.getColumnOrder().join("") !== "abcdefghi") {
         console.error("performColumnOrderTest failed - order 2 was \"" + table.getColumnOrder().join("") + "\"");
+    }
+
+    table.sortColumns(function (a: Tablify.Column, b: Tablify.Column) {
+        return a.columnId > b.columnId;
+    });
+    checkTableLinkage(table);
+    if (table.getColumnOrder().join("") !== "ihgfedcba") {
+        console.error("performColumnOrderTest failed - order 4 was \"" + table.getColumnOrder().join("") + "\"");
     }
 
     window["c"] = table;

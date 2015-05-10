@@ -308,11 +308,11 @@ module Tablify {
             var colPos: number;
             if (typeof position === "string") {
                 switch (position.toLowerCase()) {
-                    case "first":   colPos = 0; break; //First column
-                    case "last":    colPos = maxPos; break; //Last column
-                    default:        logger.error("\"position\" contains an invalid string: \""+position+"\".");
-                                    if (!isNewCol){ return; }
-                                    colPos = maxPos;
+                    case "first": colPos = 0; break; //First column
+                    case "last": colPos = maxPos; break; //Last column
+                    default: logger.error("\"position\" contains an invalid string: \"" + position + "\".");
+                        if (!isNewCol) { return; }
+                        colPos = maxPos;
                 }
             } else if (typeof position === "number") {
                 colPos = position;
@@ -336,14 +336,14 @@ module Tablify {
 
             //Check if the colPos is valid:
             if (colPos < 0) {
-                colPos = 0; 
+                colPos = 0;
                 logger.warning("The given column position is too small. The column will be inserted at the beginning.");
             } else if (colPos > maxPos) {
                 colPos = maxPos;
                 logger.warning("The given column position is too big. The column will be inserted at the end.");
             }
 
-            if (colPos === column.columnPos){
+            if (colPos === column.columnPos) {
                 return;
             }
 
@@ -401,18 +401,18 @@ module Tablify {
             //Add row to table:
             this.rows[row.rowId] = row;
             switch (row.rowType) {
-                case RowType.title:  this.titleRows.splice(row.rowPos, 0, row); break;
-                case RowType.body:   this.bodyRows.splice(row.rowPos - this.getRowCount(RowType.title), 0, row); break;
+                case RowType.title: this.titleRows.splice(row.rowPos, 0, row); break;
+                case RowType.body: this.bodyRows.splice(row.rowPos - this.getRowCount(RowType.title), 0, row); break;
                 case RowType.footer: this.footerRows.splice(row.rowPos - this.getRowCount(RowType.title) - this.getRowCount(RowType.body), 0, row); break;
                 default: assert(false, "Invalid RowType given.");
             }
             //Add row to html:
             if (row.up() && row.up().rowType === row.rowType) {
-                row.element.insertAfter( row.up().element );
+                row.element.insertAfter(row.up().element);
             } else {
                 switch (row.rowType) {
-                    case RowType.title:  this.thead.prepend(row.element); break;
-                    case RowType.body:   this.tbody.prepend(row.element); break;
+                    case RowType.title: this.thead.prepend(row.element); break;
+                    case RowType.body: this.tbody.prepend(row.element); break;
                     case RowType.footer: this.tfoot.prepend(row.element); break;
                 }
             }
@@ -443,20 +443,20 @@ module Tablify {
 
             var maxPos: number;
             switch (row.rowType) {
-                case RowType.title:     maxPos = this.getRowCount(RowType.title); break;
-                case RowType.body:      maxPos = this.getRowCount(RowType.body); break;
-                case RowType.footer:    maxPos = this.getRowCount(RowType.footer); break;
+                case RowType.title: maxPos = this.getRowCount(RowType.title); break;
+                case RowType.body: maxPos = this.getRowCount(RowType.body); break;
+                case RowType.footer: maxPos = this.getRowCount(RowType.footer); break;
             }
 
             var relRowPos: number;
             //var noWarn: boolean = false;
             if (typeof position === "string") {
                 switch (position.toLowerCase()) {
-                    case "top":     relRowPos = 0; break; //First row
-                    case "bottom":  relRowPos = maxPos; break; //Last row
-                    default:        logger.error("\"position\" contains an invalid string: \"" + position +"\".");
-                                    if(!isNewRow){ return; }
-                                    relRowPos = maxPos;
+                    case "top": relRowPos = 0; break; //First row
+                    case "bottom": relRowPos = maxPos; break; //Last row
+                    default: logger.error("\"position\" contains an invalid string: \"" + position + "\".");
+                        if (!isNewRow) { return; }
+                        relRowPos = maxPos;
                 }
             } else if (typeof position === "number") {
                 relRowPos = position;
@@ -802,7 +802,7 @@ module Tablify {
             if (row === null) {
                 throw new OperationFailedException("removeRow()", "The row does not exist in this table.");
             }
-                        
+
             var self = this;
             var removeRowNow = function () {        //"this" will be bound to the removed Row (or to undefined, if no animation is used)
                 row.element.remove();               //Remove the row from the DOM
@@ -859,7 +859,7 @@ module Tablify {
             if (column === null) {
                 throw new OperationFailedException("removeColumn()", "The column does not exist in this table.");
             }
-            
+
             var self = this;
             var removeColumnNow = function () {     //"this" will be bound to the removed Column (or to undefined, if no animation is used)
                 for (var rowId in self.rows) {      //Remove the column from the DOM
@@ -1025,7 +1025,7 @@ module Tablify {
                 var row = this.rows[order[i]];
                 if (row) {   //If the index does not exist, we skip it
                     pos[row.rowType] = pos[row.rowType] || 0;
-                    var newPos = pos[row.rowType]++; 
+                    var newPos = pos[row.rowType]++;
                     this.moveRow(row, newPos);
                 }
             }
@@ -1096,11 +1096,11 @@ module Tablify {
             var rowPos: RowPositionDefinition = position;
             if (typeof position === "string") {
                 switch (position.toLowerCase()) {
-                    case "up":  rowPos = row.getPosition() - 1;
-                                if (rowPos < 0) { rowPos = 0; }
-                                break;
+                    case "up": rowPos = row.getPosition() - 1;
+                        if (rowPos < 0) { rowPos = 0; }
+                        break;
                     case "down": rowPos = row.getPosition() + 1;
-                                break;
+                        break;
                     default:
                         if (position[0] === '+' || position[0] === '-') {
                             var delta: number = parseInt(position, 10);
@@ -1110,7 +1110,7 @@ module Tablify {
                             }
                             rowPos = row.getPosition() + delta;
                             if (rowPos < 0) { rowPos = 0; }
-                        }                           
+                        }
                 }
             }
           
@@ -1167,7 +1167,7 @@ module Tablify {
          * @throws          OperationFailedException    Is thrown if the given column does not exist or is part of another table. 
          */
         moveColumn(identifier: string|Column, position: ColumnPositionDefinition): Table {
-            var col: Column= this.getColumn(identifier);
+            var col: Column = this.getColumn(identifier);
             if (col === null) {
                 throw new OperationFailedException("moveColumn()", "The column does not exist in this table.");
             }
@@ -1230,8 +1230,58 @@ module Tablify {
             return this;
         }
 
+        /*
+         * Sorts the rows with an arbitrary compare method. Performs a quicksort.
+         * @compareFunc     (a: Row, b: Row) => boolean         Compare function. If "a" should be placed below "b", return true. Otherwise return false. 
+         * @return          Table                               This table
+         */
+        sortRows(compareFunc: (a: Row, b: Row) => boolean): Table {
+            var order = this.getRowOrder();     //We work with an array and sort the actual rows afterwards to minimise the expensive move() function calls.
+            var self = this;
+            order = this.qsort(order, compareFunc, function (rowId) { return self.rows[rowId]; });
+            this.orderRows(order);
+            return this;
+        }
 
+        /*
+         * Sorts the columns with an arbitrary compare method. Performs a quicksort.
+         * @compareFunc     (a: Column, b: Column) => boolean   Compare function. If "a" should be placed on the left side of "b", return true. Otherwise return false. 
+         * @return          Table                               This table
+         */
+        sortColumns(compareFunc: (a: Column, b: Column) => boolean): Table {
+            var order = this.getColumnOrder();  //We work with an array and sort the actual columns afterwards to minimise the expensive move() function calls.
+            var self = this;
+            order = this.qsort(order, compareFunc, function (columnId) { return self.columns[columnId]; });
+            this.orderColumns(order);
+            return this;
+        }
 
+        /*
+         * Performs a quicksort on the given index array.
+         * The array values are an id for actual objects, that can be received with "getObj( idset[..] )"
+         * @idSet           string[]                    The id-array to sort
+         * @compareFunc     (a: T, b: T) => boolean     Compare algorithm that received the objects for comparison rather than the ids
+         * @getObj:         (id: string) => T)          This function can be used to retrieve the object that belongs to a given id
+         * @return          string[]                    The sorted array
+         */
+        private qsort<T>(idSet: string[], compareFunc: (a: T, b: T) => boolean, getObj: (id: string) => T): string[] {
+            if (idSet.length === 0) {
+                return [];
+            }
+            var left = [], right = [];
+            var pivot = Math.floor(idSet.length / 2);     //In case of an already sorted (or reversed) table, it is more efficient to pick the pivot in the middle
+            var pivotId = idSet[pivot];
+            for (var i = 0; i < idSet.length; ++i) {
+                if (i == pivot) { continue; }
+                var id = idSet[i];
+                if (compareFunc(getObj(id), getObj(pivotId))) {
+                    left.push(id);
+                } else {
+                    right.push(id);
+                }
+            }
+            return this.qsort(left, compareFunc, getObj).concat(pivotId, <any>this.qsort(right, compareFunc, getObj));
+        }
 
 
 

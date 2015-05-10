@@ -65,6 +65,7 @@ Table (Manages exacly one HTMLTableElement)
     getRowCount             (rowType?: RowType): number                                             // Returns the number of rows in the table or table section (title/body)
     getRowOrder             (rowType?: RowType): string[]                                           // Retuns the order of the table rows.
     orderRows               (order: string[]): Table                                                // Orders the rows according to the given array. If the array contains rowIds that do not exist, they are ignored.
+    sortRows                (compareFunc: (a: Row, b: Row) => boolean): Table                       // Sorts the rows with an arbitrary compare method. Performs a quicksort.
     getColumnCount          (): number                                                              // Returns the number of columns in the table.
     getColumnOrder          (rowType?: RowType): string[]                                           // Returns the order of the table columns.
     orderColumns            (order: string[]): Table                                                // Orders the columns according to the given array. If the array contains columnIds that do not exist, they are ignored.
